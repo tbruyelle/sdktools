@@ -12,9 +12,7 @@ import (
 
 func main() {
 	hdPath := hd.CreateHDPath(types.CoinType, 0, 0).String()
-	var i int
-	for {
-		i++
+	for i := 0; ; i++ {
 		// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
 		entropySeed, err := bip39.NewEntropy(256)
 		if err != nil {
