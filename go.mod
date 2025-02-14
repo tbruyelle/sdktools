@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/cosmos/cosmos-sdk v0.47.15
 	github.com/cosmos/go-bip39 v1.0.0
+	golang.org/x/sync v0.6.0
 )
 
 require (
