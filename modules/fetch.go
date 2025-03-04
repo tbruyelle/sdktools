@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -21,6 +21,7 @@ func Fetch(srcFile string) error {
 	if err != nil {
 		return err
 	}
+	mods := make(map[string]string)
 	ast.Inspect(f, func(n ast.Node) bool {
 		if call, ok := n.(*ast.CallExpr); ok {
 			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
@@ -29,10 +30,10 @@ func Fetch(srcFile string) error {
 						switch arg := arg.(type) {
 						case *ast.CompositeLit:
 							name := arg.Type.(*ast.SelectorExpr).X.(*ast.Ident).Name
-							fmt.Println(i, name)
+							mods[name] = ""
 						case *ast.CallExpr:
 							name := arg.Fun.(*ast.SelectorExpr).X.(*ast.Ident).Name
-							fmt.Println(i, name)
+							mods[name] = ""
 						default:
 							spew.Dump(i, arg)
 						}
@@ -43,6 +44,20 @@ func Fetch(srcFile string) error {
 		}
 		return true
 	})
+	for _, imp := range f.Imports {
+		path := imp.Path.Value
+		path = path[1 : len(path)-1] // remove quotes
+		key := filepath.Base(path)
+		if imp.Name != nil {
+			key = imp.Name.Name
+		}
+		if _, ok := mods[key]; ok {
+			mods[key] = path
+		}
+	}
+	for k, v := range mods {
+		println(k, v)
+	}
 	return nil
 }
 
