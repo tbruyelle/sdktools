@@ -87,9 +87,16 @@ func main() {
 	}
 	merkleRoot := commitmenttypes.NewMerkleRoot(appHashBz)
 	specs := commitmenttypes.GetSDKSpecs()
-	// TODO fix path
-	path := commitmenttypes.NewMerklePath([]byte("store/gov/key"))
+	path := commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
 
+	// NOTE error bc "value" does not match the value of the first
+	// key "gov" from the proof, which is normal considering that "value" is the
+	// value of the other key 0x30 (the gov params)...
+	// "path" seems correct since VerifyMembership comments that it should be
+	// composed of the module key then the key itself.
+	// Are we supposed to pass 2 values for each different keys? There's no parameter for that...
+	// TODO check the proofs in mintscan RecvPacket, try to unmarshal them to see if there's
+	// multiple proof for the differents merke tree like we have here.
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
 	fmt.Println(err)
 }
