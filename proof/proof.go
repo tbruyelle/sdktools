@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
+	"github.com/davecgh/go-spew/spew"
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
 
@@ -89,14 +90,15 @@ func main() {
 	specs := commitmenttypes.GetSDKSpecs()
 	path := commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
 
-	// NOTE error bc "value" does not match the value of the first
-	// key "gov" from the proof, which is normal considering that "value" is the
-	// value of the other key 0x30 (the gov params)...
-	// "path" seems correct since VerifyMembership comments that it should be
-	// composed of the module key then the key itself.
-	// Are we supposed to pass 2 values for each different keys? There's no parameter for that...
-	// TODO check the proofs in mintscan RecvPacket, try to unmarshal them to see if there's
-	// multiple proof for the differents merke tree like we have here.
+	// NOTE error bc "value" does not match the value of the proof.
+	// --> specs, proofs and path are correct and have the expected order.
+	// --> Problem seems to come from the value encoding, which is proto encoded
+	// in the value field of the abci_query, but in plain text in the proof...
+	// How is that possible, if the value is stored as proto-encoded, then its
+	// proto-encoded version should be used for the proof?? Why is that different?
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
 	fmt.Println(err)
+	spew.Config.DisableMethods = true
+	spew.Dump(proofs[0].GetExist().Key, proofs[0].GetExist().Value)
+	spew.Dump(value)
 }
