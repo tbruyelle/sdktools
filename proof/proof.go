@@ -10,7 +10,7 @@ import (
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
 
-	"github.com/cometbft/cometbft/proto/tendermint/crypto"
+	abci "github.com/cometbft/cometbft/abci/types"
 )
 
 var (
@@ -18,7 +18,14 @@ var (
 	// AtomOne proof
 	// Proof of gov params key existence
 	// using https://atomone-rpc.allinbits.services/abci_query?path=%22store/gov/key%22&data=0x30&prove=true&height=3228573
-	atomOneTmProofBz = []byte(`{
+	atomOneTmResponseBz = []byte(`{
+      "code": 0,
+      "log": "",
+      "info": "",
+      "index": "0",
+      "key": "MA==",
+      "value": "ChMKBnVhdG9uZRIJNTEyMDAwMDAwEgQIgOpJGgQIgN9uIhQwLjI1MDAwMDAwMDAwMDAwMDAwMCoUMC42NjcwMDAwMDAwMDAwMDAwMDA6FDAuMTAwMDAwMDAwMDAwMDAwMDAwcAF6FDAuMDEwMDAwMDAwMDAwMDAwMDAwggEUMC4yNTAwMDAwMDAwMDAwMDAwMDCKARQwLjkwMDAwMDAwMDAwMDAwMDAwMJIBFDAuMjUwMDAwMDAwMDAwMDAwMDAwmgEUMC45MDAwMDAwMDAwMDAwMDAwMDCiAQQIgLxpqgEECICjBQ==",
+      "proofOps": {
         "ops": [
           {
             "type": "ics23:iavl",
@@ -31,47 +38,29 @@ var (
             "data": "CvsBCgNnb3YSIHYu5lhY1MjSOFkTVzDuGbpuYuRlTi1L/gkZWEWs1vezGgkIARgBIAEqAQAiJQgBEiEBEaKNvFesWykCp7xJPv9ZB24/kB+z/T6qrqUsnrdZCikiJwgBEgEBGiB22GWXyqA0nUDuhJ6l5g2/RerAXbNZW5p6O3Ppq+CLUiInCAESAQEaIAMIj7i/ftScmosPiftJUwyblliaESAz5r7MuVXbCQzFIiUIARIhAc5KUUKxy7uK/US0dMeb2QO6qWpBpL/B4HNv3nIQidGxIicIARIBARogOLHYCrCpD4iHEru1fNQ26Xv852/wl6g6BcdRabD05U0="
           }
         ]
-      }`)
-	value = []byte("ChMKBnVhdG9uZRIJNTEyMDAwMDAwEgQIgOpJGgQIgN9uIhQwLjI1MDAwMDAwMDAwMDAwMDAwMCoUMC42NjcwMDAwMDAwMDAwMDAwMDA6FDAuMTAwMDAwMDAwMDAwMDAwMDAwcAF6FDAuMDEwMDAwMDAwMDAwMDAwMDAwggEUMC4yNTAwMDAwMDAwMDAwMDAwMDCKARQwLjkwMDAwMDAwMDAwMDAwMDAwMJIBFDAuMjUwMDAwMDAwMDAwMDAwMDAwmgEUMC45MDAwMDAwMDAwMDAwMDAwMDCiAQQIgLxpqgEECICjBQ==")
+      },
+      "height": "3228573",
+      "codespace": ""
+    }`)
 	// app hash from https://atomone-rpc.allinbits.services/block?height=3228573
 	atomOneAppHash = "39F2564ECF16A07C62283773ED9CD6A990EC8EAA449379F469FF02277EE7B579"
 
 	//----------
 	// Gno proof
-	gnoTm2ProofBz = []byte(`{
-        "ops": [
-          {
-            "type": "iavl:v",
-            "key": "Z2FzUHJpY2U=",
-            "data": "pwUKpAUKLAgeEJDdARiisTwiIJWXfrnf4FN11EzJUs/6etgXUtWdGsS7ardTCnIbmLDRCisIHBCmXBiisTwiIPh5hAhi46NB5CxiOoHBjjpN3CG66NSNGLGb6oqpMB3kCisIGhCQPBiisTwiIF358abbBoePxEvMbPbwiX8x419bHX5lt9aco986oGFgCisIGBD+GxiisTwqICn/rYj2gVU3sSIaMFVW4U57rqJwxbRyxnhkRqGQa/SnCisIFhCeEBiisTwiIIoG+h/yyV5OcSmzs5+LqxfTk7hOSGA5Jssball5+2d3CisIFBCKCBiisTwiIHfzys8A4eP67H0WmmcCJ3uXdCdhVslydAVnejEv2x+gCisIEBCABBiisTwiIJzzUhruzOjIGxqy3XHv6szhYnmpqoWncoaq04HSuRdRCisIDhCAAhiisTwqIPR/pcvgNdgUICxaC5+EfSWajv3PuNAveq78jgolqdWTCisIDBCAARiisTwqIHSIu9wK0pjwS6BJC2LXNU+OBruzNQ4AhFxxmZcXno1MCioIChBAGKKxPCogkBOFQ4fze4rfpyRjQkC6yY975kUeP7QSjd0XHkO7x4wKKggIECAYorE8KiD+MHdW+K+TJIi5f3Z0HKKb2txg0FiOMhDJ57rGpPH+rAoqCAYQEBiisTwiIJY5g9TlmAlMFUhJweBxm7AMVjEMiRa5kd5AYwqUEM/vCioIBBAIGKKxPCoggakESPyw+BlnlLm5FWghAtvkFneYMvYRdAAEkerb8ncKKggCEAQYorE8IiBbt5DisYgvM78Isi7Xg/zg2n+5r0X8wNZa10TAzNZcsRowCghnYXNQcmljZRIgoQVt4nMhH3LZH6D1JMQXjvzN5DX++k+Wa6m4XcEwejEYorE8"
-          },
-          {
-            "type": "multistore",
-            "key": "bWFpbg==",
-            "data": "PAo6CjAKBG1haW4SKAomCKKxPBIgAedJzU9avKtZY6tjz2jbxXweb9xK9wVNFXgGmpHiQKwKBgoEYmFzZQ=="
-          }
-        ]
-      }`)
+	// TODO
 )
 
 func main() {
-	// Unmarshal tm proofs
-	var (
-		atomOneTmProof crypto.ProofOps
-		gnoTm2Proof    crypto.ProofOps
-	)
-	err := json.Unmarshal([]byte(atomOneTmProofBz), &atomOneTmProof)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal([]byte(gnoTm2ProofBz), &gnoTm2Proof)
+	spew.Config.DisableMethods = true
+	var res abci.ResponseQuery
+	err := json.Unmarshal(atomOneTmResponseBz, &res)
 	if err != nil {
 		panic(err)
 	}
 
 	// Turn AtomOne tm proof into ics23 commitment proof used by tm light client
-	proofs := make([]*ics23.CommitmentProof, len(atomOneTmProof.Ops))
-	for i, op := range atomOneTmProof.Ops {
+	proofs := make([]*ics23.CommitmentProof, len(res.ProofOps.Ops))
+	for i, op := range res.ProofOps.Ops {
 		var p ics23.CommitmentProof
 		err = p.Unmarshal(op.Data)
 		if err != nil || p.Proof == nil {
@@ -90,15 +79,9 @@ func main() {
 	specs := commitmenttypes.GetSDKSpecs()
 	path := commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
 
-	// NOTE error bc "value" does not match the value of the proof.
-	// --> specs, proofs and path are correct and have the expected order.
-	// --> Problem seems to come from the value encoding, which is proto encoded
-	// in the value field of the abci_query, but in plain text in the proof...
-	// How is that possible, if the value is stored as proto-encoded, then its
-	// proto-encoded version should be used for the proof?? Why is that different?
-	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
+	// FIXME invalid proof for now.
+	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
 	fmt.Println(err)
-	spew.Config.DisableMethods = true
-	spew.Dump(proofs[0].GetExist().Key, proofs[0].GetExist().Value)
-	spew.Dump(value)
+	spew.Dump(proofs[0].GetExist().Value)
+	spew.Dump(res.Value)
 }
