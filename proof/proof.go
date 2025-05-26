@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
+	host "github.com/cosmos/ibc-go/v10/modules/core/24-host"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 )
@@ -52,6 +54,9 @@ var (
 
 func main() {
 	spew.Config.DisableMethods = true
+	verifyPacketReceipt()
+	return
+
 	var res abci.ResponseQuery
 	err := json.Unmarshal(atomOneTmResponseBz, &res)
 	if err != nil {
@@ -80,6 +85,46 @@ func main() {
 	path := commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
 
 	// FIXME invalid proof for now.
+	// TODO try with a real packet committment
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
 	fmt.Println(err)
+}
+
+func verifyPacketReceipt() {
+	var (
+		// packet receipt proof
+		// cmd: atomoned q ibc channel packet-receipt transfer channel-2 5
+		// (executed at block 3284732)
+		packetReceiptProof = "Cv8GCvwGCjZyZWNlaXB0cy9wb3J0cy90cmFuc2Zlci9jaGFubmVscy9jaGFubmVsLTIvc2VxdWVuY2VzLzUSAQEaDggBGAEgASoGAALivqQBIi4IARIHAgTuoa0BIBohIB75sZwfkDzlhtkMWvBlVO/09xt32XuLSW3Gs1EFcVxcIi4IARIHBAjO3J0CIBohIKtT4vnhPqM+zHaDBUUxF++hHTcDHQaQm/72uRRts6C0Ii4IARIHBgzc3p0CIBohIBTxybwXEerVu2FhcmUF9dgR4sMOGcjpJB/7Oliar9ZqIi4IARIHCBr67Z0CIBohICCa73j418IwV7L+v3hjXt0h7gLacbhWb7gjT1o2CuRZIi4IARIHCjSYjp8CIBohIKMmb6s/bIrS2gTtk5GjmdR1vPWfsTFwYDYmwv2e84WuIi4IARIHDFy6jp8CIBohIMbHXPqlz/TIdZMLmFr2DCtG28WmxgkZAMmHWJ19Z6IHIi8IARIIDqQBuMyiAiAaISBMu69rcTqkOvH5yeH4heNGItguzVTcZYOEdhbaL4cF7yItCAESKRDUAsqhpAIg0r0Ym25yQ1YL7iXudXdE3GK12Z43Ho+UPAa/4io9k30gIi8IARIIEu4ElralAiAaISDce6GSOlj0zDVHnelIhXKONyawrvHBieZffPnlKeHNVSItCAESKRSmB5a2pQIgRp+zjKZ00W/NRt482naJ/P8n4+YQIKggq59HDtwC08ogIi8IARIIFqQPtMHCAiAaISDBUtua6oAfgs2xzL7M30XTxvFbqaKUO5hZGlE02HEsvyIvCAESCBiuGuKrhAMgGiEgemk0FvCYc15vtMpv29pJdIBwusmoRIFoA0TcUECMfCkiLwgBEgga1jPQ+5ADIBohIFiW4/yq3zE3g21/XQ5ATyav6joafuzKXTWkI+fKUHb7Ii0IARIpHIJK0PuQAyCfIHtkhwS2N3YElYPTj9lHSaTAodxrcWvfFfwzqK0BvyAiLQgBEikevHfQ+5ADIMEq49iU7lM1954NHBdwNvbYvYRga4VfG6h3Jus6OEKPICIuCAESKiDkpwLQ+5ADIBLQKsLEG+DPtcpquKcTwx1Mg47rfWS+vdqcEnB+UOVKICIuCAESKiSUzQfQ+5ADIN9RVUWddGT8w4hlUH5I+OIRXsOUapnfjMXYGwTm7tGNIAr+AQr7AQoDaWJjEiCi66yl8Vs8oNZp6bo7/sSzMynPtI9Iy233W5ki83oiUBoJCAEYASABKgEAIicIARIBARog71t4+pmoAEEVea1maHPr5hzLlyD/cxsk+U8+SsQdawAiJQgBEiEBbs7Zi9r/+uoeQizLo0dXgZnAM//N0yEiKTWldwb4h3EiJwgBEgEBGiAdZBXWzrgJl4GIz8kqNXnQeb2OUdLb//VrLWOeQuUTTyIlCAESIQEEnW5ItZcknp8R3x4+VdTI73Ixm2F9DIyi6vpYnLPj+SInCAESAQEaIPffzxYCAbdKN6vwBzoCzWg1t5X1Gp+5TFmnED+hRhfe"
+		// cmd: atomoned q block 3284732|jq '.block.header.app_hash'
+		packetReceiptAppHash = "416D75EE392246A41BEA5FBD350C13A5EA54DD9F57F75DB5991C3EB3D4BBACF0"
+	)
+
+	var merkleProof commitmenttypes.MerkleProof
+	bz, err := base64.StdEncoding.DecodeString(packetReceiptProof)
+	if err != nil {
+		panic(err)
+	}
+	err = merkleProof.Unmarshal(bz)
+	if err != nil {
+		panic(err)
+	}
+	appHashBz, err := hex.DecodeString(packetReceiptAppHash)
+	if err != nil {
+		panic(err)
+	}
+	merkleRoot := commitmenttypes.NewMerkleRoot(appHashBz)
+	specs := commitmenttypes.GetSDKSpecs()
+	key := host.PacketReceiptKey("transfer", "channel-2", 5)
+	path := commitmenttypes.NewMerklePath([]byte("ibc"), key)
+	value := []byte{byte(1)} // value of packet receipt is always 1
+
+	// FIXME invalid proof for now.
+	// TODO try with a real packet committment
+	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
+	if err != nil {
+		fmt.Println("FAIL TO VERIFY", err)
+		return
+	}
+	fmt.Println("VERIFY SUCCESS")
 }
