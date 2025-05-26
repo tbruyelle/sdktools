@@ -15,11 +15,11 @@ import (
 )
 
 func main() {
-	verifyPacketReceipt()
-	verifyGovParams()
+	verifyA1PacketReceipt()
+	verifyA1GovParams()
 }
 
-func verifyGovParams() {
+func verifyA1GovParams() {
 	var (
 		// Proof of gov params key existence (path=store/gov/key, data=0x30)
 		// using https://atomone-rpc.allinbits.services/abci_query?path=%22store/gov/key%22&data=0x30&prove=true&height=3272353
@@ -87,7 +87,7 @@ func verifyGovParams() {
 	fmt.Println("VERIFY GOV PARAMS", err)
 }
 
-func verifyPacketReceipt() {
+func verifyA1PacketReceipt() {
 	var (
 		// packet receipt proof
 		// cmd: atomoned q ibc channel packet-receipt transfer channel-2 5
