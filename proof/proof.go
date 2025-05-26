@@ -133,19 +133,30 @@ func verifyGnoGasPrice() {
 	if err != nil {
 		panic(err)
 	}
-	path := "/main/gasPrice"
 
-	err = proofOps.VerifyValue(appHashBz, path, res.Value)
+	err = proofOps.VerifyValue(appHashBz, "/main/gasPrice", res.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
 
 	// TODO Turn gno proof into ics23 commitment proof so it can be used by the
 	// default 07-tendermint light client implementation
-	// tmProofs := make([]*ics23.CommitmentProof, len(proofs))
-	// merkleProof := commitmenttypes.MerkleProof{Proofs:tmProofs}
-	// merkleRoot := commitmenttypes.NewMerkleRoot(appHashBz)
-	// specs := commitmenttypes.GetSDKSpecs()
-	// path := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
-	// err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
+	tmProofs := make([]*ics23.CommitmentProof, len(proofOps))
+	for i, p := range proofOps {
+		tmProofs[i] = &ics23.CommitmentProof{
+			Proof: &ics23.CommitmentProof_Exist{
+				Exist: &ics23.ExistenceProof{
+					Key:   p.GetKey(),
+					Value: res.Value,
+					// ...?
+				},
+			},
+		}
+	}
+	merkleProof := commitmenttypes.MerkleProof{Proofs: tmProofs}
+	merkleRoot := commitmenttypes.NewMerkleRoot(appHashBz)
+	specs := commitmenttypes.GetSDKSpecs()
+	path := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
+	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
+	fmt.Println("VERIFY GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
 }
 
 func verifyA1GovParams() {
