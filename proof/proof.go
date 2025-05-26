@@ -23,7 +23,7 @@ func verifyA1GovParams() {
 	var (
 		// Proof of gov params key existence (path=store/gov/key, data=0x30)
 		// using https://atomone-rpc.allinbits.services/abci_query?path=%22store/gov/key%22&data=0x30&prove=true&height=3272353
-		atomOneTmResponseBz = []byte(`{
+		abciResponseQueryBz = []byte(`{
       "code": 0,
       "log": "",
       "info": "",
@@ -51,16 +51,16 @@ func verifyA1GovParams() {
 		// NOTE must be taken from the block after
 		// atomoned q block 3272354|jq '.block.header.app_hash'
 		// https://atomone-rpc.allinbits.services/block?height=3272354
-		atomOneAppHash = "B2F11D67EE8D305A15234F3927D14074F8377B6AE1A2CD570E9F24BA50E0F7A4"
+		appHash = "B2F11D67EE8D305A15234F3927D14074F8377B6AE1A2CD570E9F24BA50E0F7A4"
 	)
 
 	var res abci.ResponseQuery
-	err := json.Unmarshal(atomOneTmResponseBz, &res)
+	err := json.Unmarshal(abciResponseQueryBz, &res)
 	if err != nil {
 		panic(err)
 	}
 
-	// Turn AtomOne tm proof into ics23 commitment proof used by tm light client
+	// Turn tm proof into ics23 commitment proof used by tm light client
 	proofs := make([]*ics23.CommitmentProof, len(res.ProofOps.Ops))
 	for i, op := range res.ProofOps.Ops {
 		var p ics23.CommitmentProof
@@ -73,7 +73,7 @@ func verifyA1GovParams() {
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
 
 	// Verify proofs against app hash
-	appHashBz, err := hex.DecodeString(atomOneAppHash)
+	appHashBz, err := hex.DecodeString(appHash)
 	if err != nil {
 		panic(err)
 	}
@@ -81,10 +81,8 @@ func verifyA1GovParams() {
 	specs := commitmenttypes.GetSDKSpecs()
 	path := commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
 
-	// FIXME invalid proof for now.
-	// TODO try with a real packet committment
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
-	fmt.Println("VERIFY GOV PARAMS", err)
+	fmt.Println("VERIFY A1 GOV PARAMS", err)
 }
 
 func verifyA1PacketReceipt() {
@@ -92,13 +90,19 @@ func verifyA1PacketReceipt() {
 		// packet receipt proof
 		// cmd: atomoned q ibc channel packet-receipt transfer channel-2 5
 		// (executed at block 3284732)
-		packetReceiptProof = "Cv8GCvwGCjZyZWNlaXB0cy9wb3J0cy90cmFuc2Zlci9jaGFubmVscy9jaGFubmVsLTIvc2VxdWVuY2VzLzUSAQEaDggBGAEgASoGAALivqQBIi4IARIHAgTuoa0BIBohIB75sZwfkDzlhtkMWvBlVO/09xt32XuLSW3Gs1EFcVxcIi4IARIHBAjO3J0CIBohIKtT4vnhPqM+zHaDBUUxF++hHTcDHQaQm/72uRRts6C0Ii4IARIHBgzc3p0CIBohIBTxybwXEerVu2FhcmUF9dgR4sMOGcjpJB/7Oliar9ZqIi4IARIHCBr67Z0CIBohICCa73j418IwV7L+v3hjXt0h7gLacbhWb7gjT1o2CuRZIi4IARIHCjSYjp8CIBohIKMmb6s/bIrS2gTtk5GjmdR1vPWfsTFwYDYmwv2e84WuIi4IARIHDFy6jp8CIBohIMbHXPqlz/TIdZMLmFr2DCtG28WmxgkZAMmHWJ19Z6IHIi8IARIIDqQBuMyiAiAaISBMu69rcTqkOvH5yeH4heNGItguzVTcZYOEdhbaL4cF7yItCAESKRDUAsqhpAIg0r0Ym25yQ1YL7iXudXdE3GK12Z43Ho+UPAa/4io9k30gIi8IARIIEu4ElralAiAaISDce6GSOlj0zDVHnelIhXKONyawrvHBieZffPnlKeHNVSItCAESKRSmB5a2pQIgRp+zjKZ00W/NRt482naJ/P8n4+YQIKggq59HDtwC08ogIi8IARIIFqQPtMHCAiAaISDBUtua6oAfgs2xzL7M30XTxvFbqaKUO5hZGlE02HEsvyIvCAESCBiuGuKrhAMgGiEgemk0FvCYc15vtMpv29pJdIBwusmoRIFoA0TcUECMfCkiLwgBEgga1jPQ+5ADIBohIFiW4/yq3zE3g21/XQ5ATyav6joafuzKXTWkI+fKUHb7Ii0IARIpHIJK0PuQAyCfIHtkhwS2N3YElYPTj9lHSaTAodxrcWvfFfwzqK0BvyAiLQgBEikevHfQ+5ADIMEq49iU7lM1954NHBdwNvbYvYRga4VfG6h3Jus6OEKPICIuCAESKiDkpwLQ+5ADIBLQKsLEG+DPtcpquKcTwx1Mg47rfWS+vdqcEnB+UOVKICIuCAESKiSUzQfQ+5ADIN9RVUWddGT8w4hlUH5I+OIRXsOUapnfjMXYGwTm7tGNIAr+AQr7AQoDaWJjEiCi66yl8Vs8oNZp6bo7/sSzMynPtI9Iy233W5ki83oiUBoJCAEYASABKgEAIicIARIBARog71t4+pmoAEEVea1maHPr5hzLlyD/cxsk+U8+SsQdawAiJQgBEiEBbs7Zi9r/+uoeQizLo0dXgZnAM//N0yEiKTWldwb4h3EiJwgBEgEBGiAdZBXWzrgJl4GIz8kqNXnQeb2OUdLb//VrLWOeQuUTTyIlCAESIQEEnW5ItZcknp8R3x4+VdTI73Ixm2F9DIyi6vpYnLPj+SInCAESAQEaIPffzxYCAbdKN6vwBzoCzWg1t5X1Gp+5TFmnED+hRhfe"
+		// the underlying command fetches the proof from the usual tendermint abci
+		// query with:
+		// - path = "store/ibc/key"
+		// - data (==key) = `host.PacketReceiptKey(portID, channelID, sequence)`
+		// and then turn it into a commitmenttypes.MerkleProof, so we just need to
+		// decode it from that.
+		proof = "Cv8GCvwGCjZyZWNlaXB0cy9wb3J0cy90cmFuc2Zlci9jaGFubmVscy9jaGFubmVsLTIvc2VxdWVuY2VzLzUSAQEaDggBGAEgASoGAALivqQBIi4IARIHAgTuoa0BIBohIB75sZwfkDzlhtkMWvBlVO/09xt32XuLSW3Gs1EFcVxcIi4IARIHBAjO3J0CIBohIKtT4vnhPqM+zHaDBUUxF++hHTcDHQaQm/72uRRts6C0Ii4IARIHBgzc3p0CIBohIBTxybwXEerVu2FhcmUF9dgR4sMOGcjpJB/7Oliar9ZqIi4IARIHCBr67Z0CIBohICCa73j418IwV7L+v3hjXt0h7gLacbhWb7gjT1o2CuRZIi4IARIHCjSYjp8CIBohIKMmb6s/bIrS2gTtk5GjmdR1vPWfsTFwYDYmwv2e84WuIi4IARIHDFy6jp8CIBohIMbHXPqlz/TIdZMLmFr2DCtG28WmxgkZAMmHWJ19Z6IHIi8IARIIDqQBuMyiAiAaISBMu69rcTqkOvH5yeH4heNGItguzVTcZYOEdhbaL4cF7yItCAESKRDUAsqhpAIg0r0Ym25yQ1YL7iXudXdE3GK12Z43Ho+UPAa/4io9k30gIi8IARIIEu4ElralAiAaISDce6GSOlj0zDVHnelIhXKONyawrvHBieZffPnlKeHNVSItCAESKRSmB5a2pQIgRp+zjKZ00W/NRt482naJ/P8n4+YQIKggq59HDtwC08ogIi8IARIIFqQPtMHCAiAaISDBUtua6oAfgs2xzL7M30XTxvFbqaKUO5hZGlE02HEsvyIvCAESCBiuGuKrhAMgGiEgemk0FvCYc15vtMpv29pJdIBwusmoRIFoA0TcUECMfCkiLwgBEgga1jPQ+5ADIBohIFiW4/yq3zE3g21/XQ5ATyav6joafuzKXTWkI+fKUHb7Ii0IARIpHIJK0PuQAyCfIHtkhwS2N3YElYPTj9lHSaTAodxrcWvfFfwzqK0BvyAiLQgBEikevHfQ+5ADIMEq49iU7lM1954NHBdwNvbYvYRga4VfG6h3Jus6OEKPICIuCAESKiDkpwLQ+5ADIBLQKsLEG+DPtcpquKcTwx1Mg47rfWS+vdqcEnB+UOVKICIuCAESKiSUzQfQ+5ADIN9RVUWddGT8w4hlUH5I+OIRXsOUapnfjMXYGwTm7tGNIAr+AQr7AQoDaWJjEiCi66yl8Vs8oNZp6bo7/sSzMynPtI9Iy233W5ki83oiUBoJCAEYASABKgEAIicIARIBARog71t4+pmoAEEVea1maHPr5hzLlyD/cxsk+U8+SsQdawAiJQgBEiEBbs7Zi9r/+uoeQizLo0dXgZnAM//N0yEiKTWldwb4h3EiJwgBEgEBGiAdZBXWzrgJl4GIz8kqNXnQeb2OUdLb//VrLWOeQuUTTyIlCAESIQEEnW5ItZcknp8R3x4+VdTI73Ixm2F9DIyi6vpYnLPj+SInCAESAQEaIPffzxYCAbdKN6vwBzoCzWg1t5X1Gp+5TFmnED+hRhfe"
 		// cmd: atomoned q block 3284732|jq '.block.header.app_hash'
-		packetReceiptAppHash = "416D75EE392246A41BEA5FBD350C13A5EA54DD9F57F75DB5991C3EB3D4BBACF0"
+		appHash = "416D75EE392246A41BEA5FBD350C13A5EA54DD9F57F75DB5991C3EB3D4BBACF0"
 	)
 
 	var merkleProof commitmenttypes.MerkleProof
-	bz, err := base64.StdEncoding.DecodeString(packetReceiptProof)
+	bz, err := base64.StdEncoding.DecodeString(proof)
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +110,7 @@ func verifyA1PacketReceipt() {
 	if err != nil {
 		panic(err)
 	}
-	appHashBz, err := hex.DecodeString(packetReceiptAppHash)
+	appHashBz, err := hex.DecodeString(appHash)
 	if err != nil {
 		panic(err)
 	}
@@ -116,8 +120,6 @@ func verifyA1PacketReceipt() {
 	path := commitmenttypes.NewMerklePath([]byte("ibc"), key)
 	value := []byte{byte(1)} // value of packet receipt is always 1
 
-	// FIXME invalid proof for now.
-	// TODO try with a real packet committment
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
-	fmt.Println("VERIFY PACKET RECEIPT", err)
+	fmt.Println("VERIFY A1 PACKET RECEIPT", err)
 }
