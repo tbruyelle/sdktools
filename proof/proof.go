@@ -30,6 +30,41 @@ func main() {
 func verifyGnoGasPrice() {
 	var (
 		// tm2 abci query with proof
+		// from https://rpc.gno.land/abci_query?path=.store/main/key&data=Z2FzUHJpY2U=&prove=true
+		// {
+		//   "jsonrpc": "2.0",
+		//   "id": "",
+		//   "result": {
+		//     "response": {
+		//       "ResponseBase": {
+		//         "Error": null,
+		//         "Data": null,
+		//         "Events": null,
+		//         "Log": "",
+		//         "Info": ""
+		//       },
+		//       "Key": "Z2FzUHJpY2U=",
+		//       "Value": "CNAPEgYxdWdub3Q=",
+		//       "Proof": {
+		//         "ops": [
+		//           {
+		//             "type": "iavl:v",
+		//             "key": "Z2FzUHJpY2U=",
+		//             "data": "pwUKpAUKLAgeELbdARiM70IiINMgtJjpgT/AGM88doO3aSbS6ah5l7vjlp552hTOPb7nCisIHBC+XBiM70IiIDiovZ2sL7oAt42DrhDGHa/3aE/gEZgR4Xr2FXSCA0WnCisIGhCePBiM70IiIKkrz/9nfsEum4Dxo6NDosk6NqljFQJCldXDSFK5QliXCisIGBCKHBiM70IqIFtng0BYYCXPEiX42jodxi2rbco3wyZTJwIsmbEbZS0UCisIFhCiEBiM70IiIFG6UXzWkY1wHX8RzmYzRbYf0zp8v3ltKYtv5s031by1CisIFBCKCBiM70IiIHfzys8A4eP67H0WmmcCJ3uXdCdhVslydAVnejEv2x+gCisIEBCABBiM70IiIJzzUhruzOjIGxqy3XHv6szhYnmpqoWncoaq04HSuRdRCisIDhCAAhiM70IqIPR/pcvgNdgUICxaC5+EfSWajv3PuNAveq78jgolqdWTCisIDBCAARiM70IqIHSIu9wK0pjwS6BJC2LXNU+OBruzNQ4AhFxxmZcXno1MCioIChBAGIzvQiogkBOFQ4fze4rfpyRjQkC6yY975kUeP7QSjd0XHkO7x4wKKggIECAYjO9CKiD+MHdW+K+TJIi5f3Z0HKKb2txg0FiOMhDJ57rGpPH+rAoqCAYQEBiM70IiIJY5g9TlmAlMFUhJweBxm7AMVjEMiRa5kd5AYwqUEM/vCioIBBAIGIzvQiog9goMmM0VmW/1MDIB6pMB/rBiLRdrhF5l1g8a8ZswRK0KKggCEAQYjO9CIiBbt5DisYgvM78Isi7Xg/zg2n+5r0X8wNZa10TAzNZcsRowCghnYXNQcmljZRIgoQVt4nMhH3LZH6D1JMQXjvzN5DX++k+Wa6m4XcEwejEYjO9C"
+		//           },
+		//           {
+		//             "type": "multistore",
+		//             "key": "bWFpbg==",
+		//             "data": "PAo6CjAKBG1haW4SKAomCIzvQhIgBS5dNZtUDsSlUZCBGLVo11+XSjXWjM37z2IrtAUsrhgKBgoEYmFzZQ=="
+		//           }
+		//         ]
+		//       },
+		//       "Height": "547782"
+		//     }
+		//   }
+		// }
+		// NOTE: for some reason, the Height field had to be manually changed into
+		// a number
 		abciResponseQueryBz = []byte(`{
       "ResponseBase": {
         "Error": null,
@@ -45,19 +80,38 @@ func verifyGnoGasPrice() {
           {
             "type": "iavl:v",
             "key": "Z2FzUHJpY2U=",
-            "data": "pwUKpAUKLAgeEJ7dARi82UIiIHjsc/gv1wFkfjoNXmPPgSvg2UJS0b3+jdNzLKUppZWfCisIHBCwXBi82UIiIMjd3G2ffURYKxuM4E+eVBhHvEKNykcRdnMW2iNQxcsLCisIGhCUPBi82UIiIKkrz/9nfsEum4Dxo6NDosk6NqljFQJCldXDSFK5QliXCisIGBCAHBi82UIqIJabrcvsPH2PAAhXjD17Mwkz5/Urvkm5KC5d1P3I6tElCisIFhCeEBi82UIiIIoG+h/yyV5OcSmzs5+LqxfTk7hOSGA5Jssball5+2d3CisIFBCKCBi82UIiIHfzys8A4eP67H0WmmcCJ3uXdCdhVslydAVnejEv2x+gCisIEBCABBi82UIiIJzzUhruzOjIGxqy3XHv6szhYnmpqoWncoaq04HSuRdRCisIDhCAAhi82UIqIPR/pcvgNdgUICxaC5+EfSWajv3PuNAveq78jgolqdWTCisIDBCAARi82UIqIHSIu9wK0pjwS6BJC2LXNU+OBruzNQ4AhFxxmZcXno1MCioIChBAGLzZQiogkBOFQ4fze4rfpyRjQkC6yY975kUeP7QSjd0XHkO7x4wKKggIECAYvNlCKiD+MHdW+K+TJIi5f3Z0HKKb2txg0FiOMhDJ57rGpPH+rAoqCAYQEBi82UIiIJY5g9TlmAlMFUhJweBxm7AMVjEMiRa5kd5AYwqUEM/vCioIBBAIGLzZQiogxVtXKqdLPC7Ufur/Dm9qHq3DByUDfUm123uorzysH/YKKggCEAQYvNlCIiBbt5DisYgvM78Isi7Xg/zg2n+5r0X8wNZa10TAzNZcsRowCghnYXNQcmljZRIgoQVt4nMhH3LZH6D1JMQXjvzN5DX++k+Wa6m4XcEwejEYvNlC"
+            "data": "pwUKpAUKLAgeELbdARiM70IiINMgtJjpgT/AGM88doO3aSbS6ah5l7vjlp552hTOPb7nCisIHBC+XBiM70IiIDiovZ2sL7oAt42DrhDGHa/3aE/gEZgR4Xr2FXSCA0WnCisIGhCePBiM70IiIKkrz/9nfsEum4Dxo6NDosk6NqljFQJCldXDSFK5QliXCisIGBCKHBiM70IqIFtng0BYYCXPEiX42jodxi2rbco3wyZTJwIsmbEbZS0UCisIFhCiEBiM70IiIFG6UXzWkY1wHX8RzmYzRbYf0zp8v3ltKYtv5s031by1CisIFBCKCBiM70IiIHfzys8A4eP67H0WmmcCJ3uXdCdhVslydAVnejEv2x+gCisIEBCABBiM70IiIJzzUhruzOjIGxqy3XHv6szhYnmpqoWncoaq04HSuRdRCisIDhCAAhiM70IqIPR/pcvgNdgUICxaC5+EfSWajv3PuNAveq78jgolqdWTCisIDBCAARiM70IqIHSIu9wK0pjwS6BJC2LXNU+OBruzNQ4AhFxxmZcXno1MCioIChBAGIzvQiogkBOFQ4fze4rfpyRjQkC6yY975kUeP7QSjd0XHkO7x4wKKggIECAYjO9CKiD+MHdW+K+TJIi5f3Z0HKKb2txg0FiOMhDJ57rGpPH+rAoqCAYQEBiM70IiIJY5g9TlmAlMFUhJweBxm7AMVjEMiRa5kd5AYwqUEM/vCioIBBAIGIzvQiog9goMmM0VmW/1MDIB6pMB/rBiLRdrhF5l1g8a8ZswRK0KKggCEAQYjO9CIiBbt5DisYgvM78Isi7Xg/zg2n+5r0X8wNZa10TAzNZcsRowCghnYXNQcmljZRIgoQVt4nMhH3LZH6D1JMQXjvzN5DX++k+Wa6m4XcEwejEYjO9C"
           },
           {
             "type": "multistore",
             "key": "bWFpbg==",
-            "data": "PAo6CjAKBG1haW4SKAomCLzZQhIgRz3QVvWYkJsis9XTA6bviRsA41KbE+5UfQVsy8GodKIKBgoEYmFzZQ=="
+            "data": "PAo6CjAKBG1haW4SKAomCIzvQhIgBS5dNZtUDsSlUZCBGLVo11+XSjXWjM37z2IrtAUsrhgKBgoEYmFzZQ=="
           }
         ]
       },
-      "Height": 546398
+      "Height": 547782
     }`)
-		// app hash for the block after 546399
-		appHash = "kCdtSU9FojbdABsPERoTs7aCBN/2fozwdu4izS9uqbk="
+		// app hash from https://rpc.gno.land/abci_info
+		// {
+		//  "jsonrpc": "2.0",
+		//  "id": "",
+		//  "result": {
+		//    "response": {
+		//      "ResponseBase": {
+		//        "Error": null,
+		//        "Data": "Z25vbGFuZA==",
+		//        "Events": null,
+		//        "Log": "",
+		//        "Info": ""
+		//      },
+		//      "ABCIVersion": "",
+		//      "AppVersion": "",
+		//      "LastBlockHeight": "547782",
+		//      "LastBlockAppHash": "0P9gq1X8hqEYS7xglsYwzW2WUcbCtBKyRoo6xQWO48A="
+		//    }
+		//  }
+		// }
+		appHash = "0P9gq1X8hqEYS7xglsYwzW2WUcbCtBKyRoo6xQWO48A="
 	)
 	var res gnoabci.ResponseQuery
 	err := json.Unmarshal(abciResponseQueryBz, &res)
@@ -81,7 +135,6 @@ func verifyGnoGasPrice() {
 	}
 	path := "/main/gasPrice"
 
-	// FIXME : calculated root hash is invalid
 	err = proofOps.VerifyValue(appHashBz, path, res.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
 
