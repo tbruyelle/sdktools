@@ -6,6 +6,7 @@ require (
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/ibc-go/v10 v10.2.0
 	github.com/cosmos/ics23/go v0.11.0
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/gnolang/gno v0.0.0-20250524092752-c0b0f863a387
 )
 
@@ -39,7 +40,6 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5 // indirect
 	github.com/cosmos/cosmos-sdk v0.53.0 // indirect
 	github.com/cosmos/gogoproto v1.7.0 // indirect
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
@@ -104,22 +104,4 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
-)
-
-replace (
-	// Use cosmos keyring
-	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-
-	// TODO: remove it: https://github.com/cosmos/cosmos-sdk/issues/13134
-	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt/v4 v4.4.2
-
-	// TODO Remove it: https://github.com/cosmos/cosmos-sdk/issues/10409
-	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.8.1
-
-	// following versions might cause unexpected behavior
-	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-
-	// stick with compatible version or x/exp in v0.47.x line
-	// x/exp had a breaking change in further commits
-	golang.org/x/exp => golang.org/x/exp v0.0.0-20230711153332-06a737ee72cb
 )
