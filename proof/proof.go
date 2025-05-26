@@ -7,16 +7,92 @@ import (
 	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
+	"github.com/davecgh/go-spew/spew"
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v10/modules/core/24-host"
 
 	abci "github.com/cometbft/cometbft/abci/types"
+
+	gnoabci "github.com/gnolang/gno/tm2/pkg/bft/abci/types"
+	gnomerkle "github.com/gnolang/gno/tm2/pkg/crypto/merkle"
+	gnorootmulti "github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 )
 
 func main() {
+	spew.Config.DisableMethods = true
+
+	verifyGnoGasPrice()
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
+}
+
+func verifyGnoGasPrice() {
+	var (
+		// tm2 abci query with proof
+		abciResponseQueryBz = []byte(`{
+      "ResponseBase": {
+        "Error": null,
+        "Data": null,
+        "Events": null,
+        "Log": "",
+        "Info": ""
+      },
+      "Key": "Z2FzUHJpY2U=",
+      "Value": "CNAPEgYxdWdub3Q=",
+      "Proof": {
+        "ops": [
+          {
+            "type": "iavl:v",
+            "key": "Z2FzUHJpY2U=",
+            "data": "pwUKpAUKLAgeEJ7dARi82UIiIHjsc/gv1wFkfjoNXmPPgSvg2UJS0b3+jdNzLKUppZWfCisIHBCwXBi82UIiIMjd3G2ffURYKxuM4E+eVBhHvEKNykcRdnMW2iNQxcsLCisIGhCUPBi82UIiIKkrz/9nfsEum4Dxo6NDosk6NqljFQJCldXDSFK5QliXCisIGBCAHBi82UIqIJabrcvsPH2PAAhXjD17Mwkz5/Urvkm5KC5d1P3I6tElCisIFhCeEBi82UIiIIoG+h/yyV5OcSmzs5+LqxfTk7hOSGA5Jssball5+2d3CisIFBCKCBi82UIiIHfzys8A4eP67H0WmmcCJ3uXdCdhVslydAVnejEv2x+gCisIEBCABBi82UIiIJzzUhruzOjIGxqy3XHv6szhYnmpqoWncoaq04HSuRdRCisIDhCAAhi82UIqIPR/pcvgNdgUICxaC5+EfSWajv3PuNAveq78jgolqdWTCisIDBCAARi82UIqIHSIu9wK0pjwS6BJC2LXNU+OBruzNQ4AhFxxmZcXno1MCioIChBAGLzZQiogkBOFQ4fze4rfpyRjQkC6yY975kUeP7QSjd0XHkO7x4wKKggIECAYvNlCKiD+MHdW+K+TJIi5f3Z0HKKb2txg0FiOMhDJ57rGpPH+rAoqCAYQEBi82UIiIJY5g9TlmAlMFUhJweBxm7AMVjEMiRa5kd5AYwqUEM/vCioIBBAIGLzZQiogxVtXKqdLPC7Ufur/Dm9qHq3DByUDfUm123uorzysH/YKKggCEAQYvNlCIiBbt5DisYgvM78Isi7Xg/zg2n+5r0X8wNZa10TAzNZcsRowCghnYXNQcmljZRIgoQVt4nMhH3LZH6D1JMQXjvzN5DX++k+Wa6m4XcEwejEYvNlC"
+          },
+          {
+            "type": "multistore",
+            "key": "bWFpbg==",
+            "data": "PAo6CjAKBG1haW4SKAomCLzZQhIgRz3QVvWYkJsis9XTA6bviRsA41KbE+5UfQVsy8GodKIKBgoEYmFzZQ=="
+          }
+        ]
+      },
+      "Height": 546398
+    }`)
+		// app hash for the block after 546399
+		appHash = "kCdtSU9FojbdABsPERoTs7aCBN/2fozwdu4izS9uqbk="
+	)
+	var res gnoabci.ResponseQuery
+	err := json.Unmarshal(abciResponseQueryBz, &res)
+	if err != nil {
+		panic(err)
+	}
+	prf := gnorootmulti.DefaultProofRuntime()
+	proofOps := make(gnomerkle.ProofOperators, len(res.Proof.Ops))
+	for i, op := range res.Proof.Ops {
+		po, err := prf.Decode(op)
+		if err != nil {
+			panic(err)
+		}
+		proofOps[i] = po
+	}
+
+	// Verify proofs against app hash
+	appHashBz, err := base64.StdEncoding.DecodeString(appHash)
+	if err != nil {
+		panic(err)
+	}
+	path := "/main/gasPrice"
+
+	// FIXME : calculated root hash is invalid
+	err = proofOps.VerifyValue(appHashBz, path, res.Value)
+	fmt.Println("VERIFY GNO GAS PRICE", err)
+
+	// TODO Turn gno proof into ics23 commitment proof so it can be used by the
+	// default 07-tendermint light client implementation
+	// tmProofs := make([]*ics23.CommitmentProof, len(proofs))
+	// merkleProof := commitmenttypes.MerkleProof{Proofs:tmProofs}
+	// merkleRoot := commitmenttypes.NewMerkleRoot(appHashBz)
+	// specs := commitmenttypes.GetSDKSpecs()
+	// path := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
+	// err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
 }
 
 func verifyA1GovParams() {
