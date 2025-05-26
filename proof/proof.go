@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
-	"github.com/davecgh/go-spew/spew"
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v10/modules/core/24-host"
@@ -15,12 +14,16 @@ import (
 	abci "github.com/cometbft/cometbft/abci/types"
 )
 
-var (
-	// ------------
-	// AtomOne proof
-	// Proof of gov params key existence
-	// using https://atomone-rpc.allinbits.services/abci_query?path=%22store/gov/key%22&data=0x30&prove=true&height=3228573
-	atomOneTmResponseBz = []byte(`{
+func main() {
+	verifyPacketReceipt()
+	verifyGovParams()
+}
+
+func verifyGovParams() {
+	var (
+		// Proof of gov params key existence (path=store/gov/key, data=0x30)
+		// using https://atomone-rpc.allinbits.services/abci_query?path=%22store/gov/key%22&data=0x30&prove=true&height=3272353
+		atomOneTmResponseBz = []byte(`{
       "code": 0,
       "log": "",
       "info": "",
@@ -44,18 +47,12 @@ var (
       "height": "3272353",
       "codespace": ""
     }`)
-	// app hash from https://atomone-rpc.allinbits.services/block?height=3228573
-	atomOneAppHash = "FE07EE6F56AC82346A67D0ECABCDFDF7513D7748714D843AA8A26389EBA88548"
-
-	//----------
-	// Gno proof
-	// TODO
-)
-
-func main() {
-	spew.Config.DisableMethods = true
-	verifyPacketReceipt()
-	return
+		// app hash for this proof
+		// NOTE must be taken from the block after
+		// atomoned q block 3272354|jq '.block.header.app_hash'
+		// https://atomone-rpc.allinbits.services/block?height=3272354
+		atomOneAppHash = "B2F11D67EE8D305A15234F3927D14074F8377B6AE1A2CD570E9F24BA50E0F7A4"
+	)
 
 	var res abci.ResponseQuery
 	err := json.Unmarshal(atomOneTmResponseBz, &res)
@@ -87,7 +84,7 @@ func main() {
 	// FIXME invalid proof for now.
 	// TODO try with a real packet committment
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
-	fmt.Println(err)
+	fmt.Println("VERIFY GOV PARAMS", err)
 }
 
 func verifyPacketReceipt() {
@@ -122,9 +119,5 @@ func verifyPacketReceipt() {
 	// FIXME invalid proof for now.
 	// TODO try with a real packet committment
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
-	if err != nil {
-		fmt.Println("FAIL TO VERIFY", err)
-		return
-	}
-	fmt.Println("VERIFY SUCCESS")
+	fmt.Println("VERIFY PACKET RECEIPT", err)
 }
