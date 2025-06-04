@@ -16,6 +16,7 @@ import (
 
 	gnoabci "github.com/gnolang/gno/tm2/pkg/bft/abci/types"
 	gnomerkle "github.com/gnolang/gno/tm2/pkg/crypto/merkle"
+	gnoiavl "github.com/gnolang/gno/tm2/pkg/iavl"
 	gnorootmulti "github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 )
 
@@ -25,6 +26,8 @@ func main() {
 	verifyGnoGasPrice()
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
+	// TODO check A1/Gno non existence
+	// TODO find key/value/proof for a smartcontract write
 }
 
 func verifyGnoGasPrice() {
@@ -136,16 +139,25 @@ func verifyGnoGasPrice() {
 
 	err = proofOps.VerifyValue(appHashBz, "/main/gasPrice", res.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
+	return // TODO remove me when able to transform proofOps into ics23 format
 
 	// TODO Turn gno proof into ics23 commitment proof so it can be used by the
 	// default 07-tendermint light client implementation
 	tmProofs := make([]*ics23.CommitmentProof, len(proofOps))
 	for i, p := range proofOps {
+		pp := p.(gnoiavl.IAVLValueOp)
 		tmProofs[i] = &ics23.CommitmentProof{
 			Proof: &ics23.CommitmentProof_Exist{
 				Exist: &ics23.ExistenceProof{
-					Key:   p.GetKey(),
+					Key:   pp.GetKey(),
 					Value: res.Value,
+					Leaf: &ics23.LeafOp{
+						Hash:         ics23.HashOp_SHA256,
+						PrehashKey:   ics23.HashOp_NO_HASH,
+						PrehashValue: ics23.HashOp_SHA256,
+						Length:       ics23.LengthOp_VAR_PROTO,
+						Prefix:       nil,
+					},
 					// ...?
 				},
 			},
@@ -259,7 +271,6 @@ func verifyA1PacketReceipt() {
 	key := host.PacketReceiptKey("transfer", "channel-2", 5)
 	path := commitmenttypes.NewMerklePath([]byte("ibc"), key)
 	value := []byte{byte(1)} // value of packet receipt is always 1
-
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, value)
 	fmt.Println("VERIFY A1 PACKET RECEIPT", err)
 }
