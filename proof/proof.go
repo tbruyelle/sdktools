@@ -24,6 +24,7 @@ func main() {
 	spew.Config.DisableMethods = true
 
 	verifyGnoGasPrice()
+	verifyGnoAbsence()
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
 	// TODO check A1/Gno non existence
@@ -168,6 +169,82 @@ func verifyGnoGasPrice() {
 	path := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
 	err = merkleProof.VerifyMembership(specs, merkleRoot, path, res.Value)
 	fmt.Println("VERIFY GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
+}
+
+func verifyGnoAbsence() {
+	var (
+		// NOTE: Use key 'does_not_exist_XX'
+		abciResponseQueryBz = []byte(`{
+      "ResponseBase": {
+        "Error": null,
+        "Data": null,
+        "Events": null,
+        "Log": "",
+        "Info": ""
+      },
+      "Key": "ZG9lc19ub3RfZXhpc3RfWFg=",
+      "Value": null,
+      "Proof": {
+        "ops": [
+          {
+            "type": "iavl:a",
+            "key": "ZG9lc19ub3RfZXhpc3RfWFg=",
+            "data": "ngUKmwUKLAgeEODdARjM/lUiICCpafR84mEEUAuawF4dJHlCWbUrrXOxuE163PeKnXdACisIHBDUXBjM/lUiIMYtWIvpHmOdJUFJQ4j/Q1iLad5Itkt5iE0AeYk/4GBKCisIGhCuPBjM/lUiIEJ1ecTLDLPmZnT237P+waxj3fmykfbsM2F+3KhPYgC3CisIGBCQHBjM/lUiIJZ7I5pcxtzZfFhFQsxE9naDoA12YLUD2sLtHk733k2HCisIFhDsCxj010YiIMh/cZfSbpZPUxRjN/5U4sP0JEROSlymUKbd6Jud0YRjCisIFBDkBxj010YiIHXq8fixksQSItkdIQ5jx1rz7gg4lk5sGLhzN6bSojDTCisIEhDiAxj010YiIM30dvdt2F6GAlWUkKLzkFYcRbE0YwuvaaVsV4JlzmheCikIDhDQARgCIiB0p9t2kOBwbDEUXcoug/e1swmEKj53HYc3kzJALqVRHQooCAwQUBgCIiBrvsPX0M06tEBxgFE7+u9jj0QqH2BXElwAOrJ4MKbH/AooCAoQMBgCIiCpG4ZgGicH6S84w3fDcMKJFWKXqXLKXZVusCth5bBAZQooCAgQIBgCIiD8YeL0RRwxi+xzE+YeeB5PVtgmhjnVH9FqP7Txp9cL2QooCAYQEBgCIiBsAppVmAECENi00/yIUMG2NgIEUJLworuw6u6In3DyaQooCAQQCBgCIiB3+6rPhE976iWZJ2QrJeINs65zYOPEetlhsU5Ak/R6RgooCAIQBBgCIiAYjflprvvrCEvKGToPNxTn+Y0q4xzKHAMUfy9pAHurJho2ChBwa2c6dW5pY29kZS91dGY4EiAjJwbffVPqjKxZbpA9yw0Bbrkbq69iyl/hHiYV5fso5xgC"
+          },
+          {
+            "type": "multistore",
+            "key": "bWFpbg==",
+            "data": "PAo6CjAKBG1haW4SKAomCMz+VRIggalOO61/jI5uUpeTXDCz7MsdVJBsSFNNjdtDUk36QAEKBgoEYmFzZQ=="
+          }
+        ]
+      },
+      "Height": 704422
+    }`)
+		// app hash from https://rpc.gno.land/abci_info
+		//{
+		//   "jsonrpc": "2.0",
+		//   "id": "",
+		//   "result": {
+		//     "response": {
+		//       "ResponseBase": {
+		//         "Error": null,
+		//         "Data": "Z25vbGFuZA==",
+		//         "Events": null,
+		//         "Log": "",
+		//         "Info": ""
+		//       },
+		//       "ABCIVersion": "",
+		//       "AppVersion": "",
+		//       "LastBlockHeight": "704422",
+		//       "LastBlockAppHash": "tiQtkxbRQcg01p976gLJT/KMDeAH7Ub9AcJCYiSeHSw="
+		//     }
+		//   }
+		// }
+		appHash = "tiQtkxbRQcg01p976gLJT/KMDeAH7Ub9AcJCYiSeHSw="
+	)
+	var res gnoabci.ResponseQuery
+	err := json.Unmarshal(abciResponseQueryBz, &res)
+	if err != nil {
+		panic(err)
+	}
+	prf := gnorootmulti.DefaultProofRuntime()
+	proofOps := make(gnomerkle.ProofOperators, len(res.Proof.Ops))
+	for i, op := range res.Proof.Ops {
+		po, err := prf.Decode(op)
+		if err != nil {
+			panic(err)
+		}
+		proofOps[i] = po
+	}
+
+	// Verify proofs against app hash
+	appHashBz, err := base64.StdEncoding.DecodeString(appHash)
+	if err != nil {
+		panic(err)
+	}
+
+	err = proofOps.Verify(appHashBz, "/main/does_not_exist_XX", nil)
+	fmt.Println("VERIFY GNO ABSENCE", err)
 }
 
 func verifyA1GovParams() {
