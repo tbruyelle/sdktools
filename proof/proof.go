@@ -28,6 +28,11 @@ func main() {
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
 	// TODO check A1/Gno non existence
+
+	// TODO find how to determine key to r/ibc packet commitment/ack
+	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
+	// is it possible to fetch that from a gno sc and returns it to the
+	// caller ?
 }
 
 func verifyGnoGasPrice() {
