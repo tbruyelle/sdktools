@@ -27,7 +27,6 @@ func main() {
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
 	// TODO check A1/Gno non existence
-	// TODO find key/value/proof for a smartcontract write
 }
 
 func verifyGnoGasPrice() {
