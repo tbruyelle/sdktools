@@ -24,10 +24,10 @@ func main() {
 	spew.Config.DisableMethods = true
 
 	verifyGnoGasPrice()
-	verifyGnoAbsence()
 	verifyA1PacketReceipt()
 	verifyA1GovParams()
 	// TODO check A1/Gno non existence
+	verifyGnoAbsence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
 	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
@@ -178,7 +178,8 @@ func verifyGnoGasPrice() {
 
 func verifyGnoAbsence() {
 	var (
-		// NOTE: Use key 'does_not_exist_XX'
+		// NOTE: Use key 'XX_does_not_exist_XX'
+		// https://rpc.gno.land/abci_query?path=.store/main/key&data=WFhfZG9lc19ub3RfZXhpc3RfWFg=&prove=true
 		abciResponseQueryBz = []byte(`{
       "ResponseBase": {
         "Error": null,
@@ -187,45 +188,26 @@ func verifyGnoAbsence() {
         "Log": "",
         "Info": ""
       },
-      "Key": "ZG9lc19ub3RfZXhpc3RfWFg=",
+      "Key": "WFhfZG9lc19ub3RfZXhpc3RfWFg=",
       "Value": null,
       "Proof": {
         "ops": [
           {
             "type": "iavl:a",
-            "key": "ZG9lc19ub3RfZXhpc3RfWFg=",
-            "data": "ngUKmwUKLAgeEODdARjM/lUiICCpafR84mEEUAuawF4dJHlCWbUrrXOxuE163PeKnXdACisIHBDUXBjM/lUiIMYtWIvpHmOdJUFJQ4j/Q1iLad5Itkt5iE0AeYk/4GBKCisIGhCuPBjM/lUiIEJ1ecTLDLPmZnT237P+waxj3fmykfbsM2F+3KhPYgC3CisIGBCQHBjM/lUiIJZ7I5pcxtzZfFhFQsxE9naDoA12YLUD2sLtHk733k2HCisIFhDsCxj010YiIMh/cZfSbpZPUxRjN/5U4sP0JEROSlymUKbd6Jud0YRjCisIFBDkBxj010YiIHXq8fixksQSItkdIQ5jx1rz7gg4lk5sGLhzN6bSojDTCisIEhDiAxj010YiIM30dvdt2F6GAlWUkKLzkFYcRbE0YwuvaaVsV4JlzmheCikIDhDQARgCIiB0p9t2kOBwbDEUXcoug/e1swmEKj53HYc3kzJALqVRHQooCAwQUBgCIiBrvsPX0M06tEBxgFE7+u9jj0QqH2BXElwAOrJ4MKbH/AooCAoQMBgCIiCpG4ZgGicH6S84w3fDcMKJFWKXqXLKXZVusCth5bBAZQooCAgQIBgCIiD8YeL0RRwxi+xzE+YeeB5PVtgmhjnVH9FqP7Txp9cL2QooCAYQEBgCIiBsAppVmAECENi00/yIUMG2NgIEUJLworuw6u6In3DyaQooCAQQCBgCIiB3+6rPhE976iWZJ2QrJeINs65zYOPEetlhsU5Ak/R6RgooCAIQBBgCIiAYjflprvvrCEvKGToPNxTn+Y0q4xzKHAMUfy9pAHurJho2ChBwa2c6dW5pY29kZS91dGY4EiAjJwbffVPqjKxZbpA9yw0Bbrkbq69iyl/hHiYV5fso5xgC"
+            "key": "WFhfZG9lc19ub3RfZXhpc3RfWFg=",
+            "data": "igYKhwYKLAgeEPTdARiG5VciILE41jGsr8V4v6mzRqhD+ER+udyPprdAjcVV5bROiFRmCisIHBDiXBiG5VciIAwI7JBAxRPYTQrVbXjtH/zP2dZWqXAMWxqkRhjF4kA6CisIGhC0PBiG5VcqIC9uOSt/tfSRwzwFvfyUuaSG17Ps2/tVvu30PB820CV9CisIGBCiIBigjVcqINpzRVsEdbW8qmixdxkWNpJ48AjO51rhA7TnzilsAYm5CisIFhCIEBjO90IqIGaLY/HoZKK9GEpsLkikkMDLSqhtiMX1zrRrwldirGFYCikIEhCACBgCIiCNPlQZi5oJRcf2Xi/OCujX9MJCpm0nThjRuP+rLcAipgopCBAQgAQYAiIg+sye/nI7MkACzqkSawWVC7iN/krfeJ37cPRyS7zUnFQKKQgOEIACGAIiIGmV6Ebi0LmgUyRkieLDfQF0zWt8SVn6aR9WoPQdq0xYCikIDBCAARgCIiDv6ol1S2QNv7I9CcUaAXnU7hO4nFRJERIGwdArrDlhRwooCAoQQBgCIiBjcuD4UgUWfCp5HSqa01NpTMkMgppOGUnl3G205sIlNQooCAgQIBgCIiC7DiPos+ZT4F85y1kFPxla1k2jkoe1rGexAd6wep+4kAooCAYQEBgCKiAqzKonU9Wk1JbXapiHZ1vDbWudc+FrverG9kSmBGB5FAooCAQQCBgCIiCs3Z+zB8j1O36CYX7quMgM6nfoJaoJAw/CsKFV40EQgQooCAIQBBgCKiB9ty9svKHHu0dFw9XTglW1r94CVObSH/15B8MKJXKYYBIAGlEKKzlmZDc1MjAyYzg2NGYxNTMzNjdmMWM4MTA5NGUxYjY5YWM5NTZhMGI6MjQSIKz0x0omsZj9vJBW4fhBWFELt3zh6bD9BGBtlZb3aWuwGAIaUAoqYTA1ZTI1NzMwYWRlNzIxZWE0ZjI2ZmZmMDgzMmE5NDk0NmQxNmViMjoyEiDr8Yfucg30ShPM0uY/6aukBIzICZ/z2k7ZOGlCn32pWxgC"
           },
           {
             "type": "multistore",
             "key": "bWFpbg==",
-            "data": "PAo6CjAKBG1haW4SKAomCMz+VRIggalOO61/jI5uUpeTXDCz7MsdVJBsSFNNjdtDUk36QAEKBgoEYmFzZQ=="
+            "data": "PAo6CjAKBG1haW4SKAomCIblVxIgrzsY8KuhjcPGO9GI0ZT45fW8OeXLecJ9VrVyljLn84YKBgoEYmFzZQ=="
           }
         ]
       },
-      "Height": 704422
+      "Height": 719171
     }`)
-		// app hash from https://rpc.gno.land/abci_info
-		//{
-		//   "jsonrpc": "2.0",
-		//   "id": "",
-		//   "result": {
-		//     "response": {
-		//       "ResponseBase": {
-		//         "Error": null,
-		//         "Data": "Z25vbGFuZA==",
-		//         "Events": null,
-		//         "Log": "",
-		//         "Info": ""
-		//       },
-		//       "ABCIVersion": "",
-		//       "AppVersion": "",
-		//       "LastBlockHeight": "704422",
-		//       "LastBlockAppHash": "tiQtkxbRQcg01p976gLJT/KMDeAH7Ub9AcJCYiSeHSw="
-		//     }
-		//   }
-		// }
-		appHash = "tiQtkxbRQcg01p976gLJT/KMDeAH7Ub9AcJCYiSeHSw="
+		// app hash from https://rpc.gno.land/abci_info for height below
+		appHash = "KhuwgJGgaL7ThS8TXPc5paw3kkOoypZM0G1CCr4gwlc="
 	)
 	var res gnoabci.ResponseQuery
 	err := json.Unmarshal(abciResponseQueryBz, &res)
@@ -241,6 +223,7 @@ func verifyGnoAbsence() {
 		}
 		proofOps[i] = po
 	}
+	spew.Dump(proofOps)
 
 	// Verify proofs against app hash
 	appHashBz, err := base64.StdEncoding.DecodeString(appHash)
@@ -248,7 +231,7 @@ func verifyGnoAbsence() {
 		panic(err)
 	}
 
-	err = proofOps.Verify(appHashBz, "/main/does_not_exist_XX", nil)
+	err = proofOps.Verify(appHashBz, "/main/XX_does_not_exist_XX", nil)
 	fmt.Println("VERIFY GNO ABSENCE", err)
 }
 
