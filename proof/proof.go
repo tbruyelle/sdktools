@@ -155,7 +155,7 @@ func verifyA1GovParams() {
 		panic(err)
 	}
 
-	// Turn tm proof into ics23 commitment proof used by tm light client
+	// Decode ics23 proof
 	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.ProofOps.Ops))
 	for i, op := range reqres.Response.ProofOps.Ops {
 		var p ics23.CommitmentProof
@@ -206,7 +206,7 @@ func verifyA1Absence() {
 		panic(err)
 	}
 
-	// Turn tm proof into ics23 commitment proof used by tm light client
+	// Decode ics23 proof
 	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.ProofOps.Ops))
 	for i, op := range reqres.Response.ProofOps.Ops {
 		var p ics23.CommitmentProof
