@@ -45,6 +45,7 @@ func verifyGnoGasPrice() {
 		panic(err)
 	}
 
+	// Decode tm2 proof
 	prf := gnorootmulti.DefaultProofRuntime()
 	proofOps := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
 	for i, op := range qres.Response.Proof.Ops {
@@ -111,6 +112,7 @@ func verifyGnoAbsence() {
 		panic(err)
 	}
 
+	// Decode tm2 proof
 	prf := gnorootmulti.DefaultProofRuntime()
 	proofOps := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
 	for i, op := range qres.Response.Proof.Ops {
