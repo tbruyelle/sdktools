@@ -21,8 +21,8 @@ func main() {
 
 	verifyGnoGasPrice()
 	verifyA1GovParams()
-	// TODO check A1/Gno non existence
 	verifyGnoAbsence()
+	verifyA1Absence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
 	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
@@ -177,8 +177,59 @@ func verifyA1GovParams() {
 	var (
 		merkleRoot = commitmenttypes.NewMerkleRoot(blockres.Block.Header.AppHash)
 		specs      = commitmenttypes.GetSDKSpecs()
-		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), []byte{0x30})
+		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), key)
 	)
 	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, reqres.Response.Value)
 	fmt.Println("VERIFY A1 GOV PARAMS", err)
+}
+
+func verifyA1Absence() {
+	var (
+		ctx  = context.Background()
+		path = "store/gov/key"             // path to gov module store
+		key  = []byte("does_not_exist_XX") // unknown key in gov module store
+	)
+	infres, err := a1cli().ABCIInfo(ctx)
+	if err != nil {
+		panic(err)
+	}
+	// Get a recent height
+	height := infres.Response.LastBlockHeight - 10
+
+	// Get proof
+	reqres, err := a1cli().ABCIQueryWithOptions(ctx, path, key,
+		rpcclient.ABCIQueryOptions{
+			Height: height,
+			Prove:  true,
+		})
+	if err != nil {
+		panic(err)
+	}
+
+	// Turn tm proof into ics23 commitment proof used by tm light client
+	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.ProofOps.Ops))
+	for i, op := range reqres.Response.ProofOps.Ops {
+		var p ics23.CommitmentProof
+		err = p.Unmarshal(op.Data)
+		if err != nil || p.Proof == nil {
+			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
+		}
+		proofs[i] = &p
+	}
+	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
+
+	// Get app hash for proof height (must use following block to get app hash)
+	height++
+	blockres, err := a1cli().Block(ctx, &height)
+	if err != nil {
+		panic(err)
+	}
+
+	var (
+		merkleRoot = commitmenttypes.NewMerkleRoot(blockres.Block.Header.AppHash)
+		specs      = commitmenttypes.GetSDKSpecs()
+		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), key)
+	)
+	err = merkleProof.VerifyNonMembership(specs, merkleRoot, mpath)
+	fmt.Println("VERIFY A1 ABSENCE", err)
 }
