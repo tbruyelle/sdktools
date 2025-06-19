@@ -30,6 +30,17 @@ func main() {
 	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
 	// is it possible to fetch that from a gno sc and returns it to the
 	// caller ?
+	// One solution consists of using std.SetParamStrings in the gno realm, so
+	// it's easy for the relayer to determine the key of the commitment packet
+	// knowing his sequence number. Keys registered by `std.SetParamStrings` have
+	// the following format: `vm:RLM_PATH:key`, so considering a `r/sys/ibc`
+	// realm, the key of a commitment packet would look like:
+	// `vm:gno.land/r/sys/ibc:07-tendermint-1142` where
+	// - `vm:gno.land/r/sys/ibc:` is the prefix added by `std.SetParamStrings`
+	// - `07-tendermint-1` is the client id
+	// - `1` is the byte indicator of a commitment packet (2 for receipt and 3 for
+	// ack)
+	// - `42` is the sequence number of the commitment packet
 }
 
 func verifyGnoGasPrice() {
