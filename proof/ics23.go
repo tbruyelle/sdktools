@@ -1,0 +1,71 @@
+package main
+
+import (
+	"encoding/binary"
+
+	ics23 "github.com/cosmos/ics23/go"
+
+	gnoiavl "github.com/gnolang/gno/tm2/pkg/iavl"
+)
+
+func convertLeafOp(version int64) *ics23.LeafOp {
+	var varintBuf [binary.MaxVarintLen64]byte
+	// this is adapted from iavl/proof.go:proofLeafNode.Hash()
+	prefix := convertVarIntToBytes(0, varintBuf)
+	prefix = append(prefix, convertVarIntToBytes(1, varintBuf)...)
+	prefix = append(prefix, convertVarIntToBytes(version, varintBuf)...)
+
+	return &ics23.LeafOp{
+		Hash:         ics23.HashOp_SHA256,
+		PrehashValue: ics23.HashOp_SHA256,
+		Length:       ics23.LengthOp_VAR_PROTO,
+		Prefix:       prefix,
+	}
+}
+
+// we cannot get the proofInnerNode type, so we need to do the whole path in one function
+func convertInnerOps(path gnoiavl.PathToLeaf) []*ics23.InnerOp {
+	steps := make([]*ics23.InnerOp, 0, len(path))
+
+	// lengthByte is the length prefix prepended to each of the sha256 sub-hashes
+	var lengthByte byte = 0x20
+
+	var varintBuf [binary.MaxVarintLen64]byte
+
+	// we need to go in reverse order, iavl starts from root to leaf,
+	// we want to go up from the leaf to the root
+	for i := len(path) - 1; i >= 0; i-- {
+		// this is adapted from iavl/proof.go:proofInnerNode.Hash()
+		prefix := convertVarIntToBytes(int64(path[i].Height), varintBuf)
+		prefix = append(prefix, convertVarIntToBytes(path[i].Size, varintBuf)...)
+		prefix = append(prefix, convertVarIntToBytes(path[i].Version, varintBuf)...)
+
+		var suffix []byte
+		if len(path[i].Left) > 0 {
+			// length prefixed left side
+			prefix = append(prefix, lengthByte)
+			prefix = append(prefix, path[i].Left...)
+			// prepend the length prefix for child
+			prefix = append(prefix, lengthByte)
+		} else {
+			// prepend the length prefix for child
+			prefix = append(prefix, lengthByte)
+			// length-prefixed right side
+			suffix = []byte{lengthByte}
+			suffix = append(suffix, path[i].Right...)
+		}
+
+		op := &ics23.InnerOp{
+			Hash:   ics23.HashOp_SHA256,
+			Prefix: prefix,
+			Suffix: suffix,
+		}
+		steps = append(steps, op)
+	}
+	return steps
+}
+
+func convertVarIntToBytes(orig int64, buf [binary.MaxVarintLen64]byte) []byte {
+	n := binary.PutVarint(buf[:], orig)
+	return buf[:n]
+}

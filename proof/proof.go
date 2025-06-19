@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
+	"github.com/davecgh/go-spew/spew"
 
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
 
@@ -13,6 +14,7 @@ import (
 	gnoclient "github.com/gnolang/gno/tm2/pkg/bft/rpc/client"
 	gnomerkle "github.com/gnolang/gno/tm2/pkg/crypto/merkle"
 	gnoiavl "github.com/gnolang/gno/tm2/pkg/iavl"
+	"github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 	gnorootmulti "github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 )
 
@@ -65,28 +67,28 @@ func verifyGnoGasPrice() {
 
 	err = proofOps.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
-	return // TODO remove me when able to transform proofOps into ics23 format
 
-	// TODO Turn gno proof into ics23 commitment proof so it can be used by the
+	// TODO Turn tm2 proof into ics23 commitment proof so it can be used by the
 	// default 07-tendermint light client implementation
 	tmProofs := make([]*ics23.CommitmentProof, len(proofOps))
 	for i, p := range proofOps {
-		pp := p.(gnoiavl.IAVLValueOp)
-		tmProofs[i] = &ics23.CommitmentProof{
-			Proof: &ics23.CommitmentProof_Exist{
-				Exist: &ics23.ExistenceProof{
-					Key:   pp.GetKey(),
-					Value: qres.Response.Value,
-					Leaf: &ics23.LeafOp{
-						Hash:         ics23.HashOp_SHA256,
-						PrehashKey:   ics23.HashOp_NO_HASH,
-						PrehashValue: ics23.HashOp_SHA256,
-						Length:       ics23.LengthOp_VAR_PROTO,
-						Prefix:       nil,
+		fmt.Println(i, p)
+		switch pp := p.(type) {
+		case rootmulti.MultiStoreProofOp:
+			tmProofs[i] = &ics23.CommitmentProof{}
+		case gnoiavl.IAVLValueOp:
+			tmProofs[i] = &ics23.CommitmentProof{
+				Proof: &ics23.CommitmentProof_Exist{
+					Exist: &ics23.ExistenceProof{
+						Key:   pp.GetKey(),
+						Value: qres.Response.Value,
+						Leaf:  convertLeafOp(height - 1),
+						Path:  convertInnerOps(pp.Proof.LeftPath),
 					},
-					// ...?
 				},
-			},
+			}
+		case gnoiavl.IAVLAbsenceOp:
+			// TODO
 		}
 	}
 	merkleProof := commitmenttypes.MerkleProof{Proofs: tmProofs}
@@ -159,6 +161,7 @@ func verifyA1GovParams() {
 
 	// Decode ics23 proof
 	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.ProofOps.Ops))
+	spew.Dump(reqres.Response.ProofOps.Ops)
 	for i, op := range reqres.Response.ProofOps.Ops {
 		var p ics23.CommitmentProof
 		err = p.Unmarshal(op.Data)
@@ -167,6 +170,7 @@ func verifyA1GovParams() {
 		}
 		proofs[i] = &p
 	}
+	spew.Dump(proofs)
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
 
 	// Get app hash for proof height (must use following block to get app hash)
