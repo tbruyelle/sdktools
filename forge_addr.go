@@ -15,6 +15,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
+// NOTE: similar to https://github.com/atomone-hub/atonevanity
 func main() {
 	cpus := runtime.NumCPU()
 	fmt.Println("CPUs=", cpus)
