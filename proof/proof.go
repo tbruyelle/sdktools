@@ -60,13 +60,13 @@ func verifyGnoGasPrice() {
 
 	// Decode tm2 proof
 	prf := gnorootmulti.DefaultProofRuntime()
-	proofOps := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
+	tmp2Proofs := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
 	for i, op := range qres.Response.Proof.Ops {
 		po, err := prf.Decode(op)
 		if err != nil {
 			panic(err)
 		}
-		proofOps[i] = po
+		tmp2Proofs[i] = po
 	}
 
 	// Verify proofs against app hash
@@ -76,19 +76,19 @@ func verifyGnoGasPrice() {
 		panic(err)
 	}
 
-	err = proofOps.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
+	err = tmp2Proofs.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
 
-	// TODO Turn tm2 proof into ics23 commitment proof so it can be used by the
-	// default 07-tendermint light client implementation
-	tmProofs := make([]*ics23.CommitmentProof, len(proofOps))
-	for i, p := range proofOps {
+	// TODO Turn tm2 proofs into ics23 proofs so it can be used by the default
+	// 07-tendermint light client implementation
+	ics23Proofs := make([]*ics23.CommitmentProof, len(tmp2Proofs))
+	for i, p := range tmp2Proofs {
 		fmt.Println(i, p)
 		switch pp := p.(type) {
 		case rootmulti.MultiStoreProofOp:
-			tmProofs[i] = &ics23.CommitmentProof{}
+			ics23Proofs[i] = &ics23.CommitmentProof{}
 		case gnoiavl.IAVLValueOp:
-			tmProofs[i] = &ics23.CommitmentProof{
+			ics23Proofs[i] = &ics23.CommitmentProof{
 				Proof: &ics23.CommitmentProof_Exist{
 					Exist: &ics23.ExistenceProof{
 						Key:   pp.GetKey(),
@@ -102,7 +102,7 @@ func verifyGnoGasPrice() {
 			// TODO
 		}
 	}
-	merkleProof := commitmenttypes.MerkleProof{Proofs: tmProofs}
+	merkleProof := commitmenttypes.MerkleProof{Proofs: ics23Proofs}
 	merkleRoot := commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
 	specs := commitmenttypes.GetSDKSpecs()
 	mpath := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
