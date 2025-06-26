@@ -13,8 +13,6 @@ import (
 
 	gnoclient "github.com/gnolang/gno/tm2/pkg/bft/rpc/client"
 	gnomerkle "github.com/gnolang/gno/tm2/pkg/crypto/merkle"
-	gnoiavl "github.com/gnolang/gno/tm2/pkg/iavl"
-	"github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 	gnorootmulti "github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 )
 
@@ -60,13 +58,13 @@ func verifyGnoGasPrice() {
 
 	// Decode tm2 proof
 	prf := gnorootmulti.DefaultProofRuntime()
-	tmp2Proofs := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
+	tm2Proofs := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
 	for i, op := range qres.Response.Proof.Ops {
 		po, err := prf.Decode(op)
 		if err != nil {
 			panic(err)
 		}
-		tmp2Proofs[i] = po
+		tm2Proofs[i] = po
 	}
 
 	// Verify proofs against app hash
@@ -76,32 +74,10 @@ func verifyGnoGasPrice() {
 		panic(err)
 	}
 
-	err = tmp2Proofs.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
+	err = tm2Proofs.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
 
-	// TODO Turn tm2 proofs into ics23 proofs so it can be used by the default
-	// 07-tendermint light client implementation
-	ics23Proofs := make([]*ics23.CommitmentProof, len(tmp2Proofs))
-	for i, p := range tmp2Proofs {
-		fmt.Println(i, p)
-		switch pp := p.(type) {
-		case rootmulti.MultiStoreProofOp:
-			ics23Proofs[i] = &ics23.CommitmentProof{}
-		case gnoiavl.IAVLValueOp:
-			ics23Proofs[i] = &ics23.CommitmentProof{
-				Proof: &ics23.CommitmentProof_Exist{
-					Exist: &ics23.ExistenceProof{
-						Key:   pp.GetKey(),
-						Value: qres.Response.Value,
-						Leaf:  convertLeafOp(height - 1),
-						Path:  convertInnerOps(pp.Proof.LeftPath),
-					},
-				},
-			}
-		case gnoiavl.IAVLAbsenceOp:
-			// TODO
-		}
-	}
+	ics23Proofs := convertProof(qres.Response.Value, height, tm2Proofs)
 	merkleProof := commitmenttypes.MerkleProof{Proofs: ics23Proofs}
 	merkleRoot := commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
 	specs := commitmenttypes.GetSDKSpecs()

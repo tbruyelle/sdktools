@@ -2,11 +2,51 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
 
+	gnomerkle "github.com/gnolang/gno/tm2/pkg/crypto/merkle"
 	gnoiavl "github.com/gnolang/gno/tm2/pkg/iavl"
+	"github.com/gnolang/gno/tm2/pkg/store/rootmulti"
 )
+
+// Turn tm2 proofs into ics23 proofs so it can be used by the default
+// 07-tendermint light client implementation.
+// TODO wip
+func convertProof(value []byte, height int64, tm2Proofs gnomerkle.ProofOperators) []*ics23.CommitmentProof {
+	ics23Proofs := make([]*ics23.CommitmentProof, len(tm2Proofs))
+	for i, p := range tm2Proofs {
+		fmt.Println(i, p)
+		switch pp := p.(type) {
+		case rootmulti.MultiStoreProofOp:
+			ics23Proofs[i] = &ics23.CommitmentProof{}
+		case gnoiavl.IAVLValueOp:
+			ics23Proofs[i] = &ics23.CommitmentProof{
+				Proof: &ics23.CommitmentProof_Exist{
+					Exist: &ics23.ExistenceProof{
+						Key:   pp.GetKey(),
+						Value: value,
+						Leaf:  convertLeafOp(height - 1),
+						Path:  convertInnerOps(pp.Proof.LeftPath),
+					},
+				},
+			}
+		case gnoiavl.IAVLAbsenceOp:
+			ics23Proofs[i] = &ics23.CommitmentProof{
+				Proof: &ics23.CommitmentProof_Nonexist{
+					Nonexist: &ics23.NonExistenceProof{
+						Key: pp.GetKey(),
+						// TODO fill
+						Left:  nil,
+						Right: nil,
+					},
+				},
+			}
+		}
+	}
+	return ics23Proofs
+}
 
 func convertLeafOp(version int64) *ics23.LeafOp {
 	var varintBuf [binary.MaxVarintLen64]byte
