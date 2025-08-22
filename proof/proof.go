@@ -19,9 +19,10 @@ import (
 func main() {
 	// spew.Config.DisableMethods = true
 
-	verifyGnoGasPrice()
+	// verifyGnoGasPrice()
+	verifyGnoGasPriceICS23()
 	verifyA1GovParams()
-	verifyGnoAbsence()
+	// verifyGnoAbsence()
 	verifyA1Absence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
@@ -84,6 +85,52 @@ func verifyGnoGasPrice() {
 	mpath := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
 	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, qres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
+}
+
+func verifyGnoGasPriceICS23() {
+	var (
+		path = ".store/main/key"
+		key  = []byte("gasPrice")
+	)
+	height := int64(10)
+	qres, err := gnocli().ABCIQueryWithOptions(
+		path, key, gnoclient.ABCIQueryOptions{
+			Height: height,
+			Prove:  true,
+		})
+	if err != nil {
+		panic(err)
+	}
+	spew.Dump(qres)
+
+	// Decode ics23 proof
+	proofs := make([]*ics23.CommitmentProof, len(qres.Response.Proof.Ops))
+	spew.Dump(qres.Response.Proof.Ops)
+	for i, op := range qres.Response.Proof.Ops {
+		var p ics23.CommitmentProof
+		err = p.Unmarshal(op.Data)
+		if err != nil || p.Proof == nil {
+			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
+		}
+		proofs[i] = &p
+	}
+	spew.Dump(proofs)
+	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
+
+	// Verify proofs against app hash
+	height++
+	rres, err := gnocli().Block(&height)
+	if err != nil {
+		panic(err)
+	}
+
+	var (
+		merkleRoot = commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
+		specs      = commitmenttypes.GetSDKSpecs()
+		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), key)
+	)
+	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, qres.Response.Value)
+	fmt.Println("VERIFY ICS23 GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
 }
 
 func verifyGnoAbsence() {
