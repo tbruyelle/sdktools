@@ -21,9 +21,9 @@ func main() {
 
 	// verifyGnoGasPrice()
 	verifyGnoGasPriceICS23()
-	verifyA1GovParams()
+	// verifyA1GovParams()
 	// verifyGnoAbsence()
-	verifyA1Absence()
+	// verifyA1Absence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
 	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
@@ -92,7 +92,7 @@ func verifyGnoGasPriceICS23() {
 		path = ".store/main/key"
 		key  = []byte("gasPrice")
 	)
-	height := int64(10)
+	height := int64(2)
 	qres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
@@ -101,11 +101,9 @@ func verifyGnoGasPriceICS23() {
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(qres)
 
 	// Decode ics23 proof
 	proofs := make([]*ics23.CommitmentProof, len(qres.Response.Proof.Ops))
-	spew.Dump(qres.Response.Proof.Ops)
 	for i, op := range qres.Response.Proof.Ops {
 		var p ics23.CommitmentProof
 		err = p.Unmarshal(op.Data)
@@ -114,11 +112,10 @@ func verifyGnoGasPriceICS23() {
 		}
 		proofs[i] = &p
 	}
-	spew.Dump(proofs)
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
 
 	// Verify proofs against app hash
-	height++
+	// height++
 	rres, err := gnocli().Block(&height)
 	if err != nil {
 		panic(err)
