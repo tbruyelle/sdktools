@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	// spew.Config.DisableMethods = true
+	spew.Config.DisableMethods = true
 
 	// verifyGnoGasPrice()
 	verifyGnoGasPriceICS23()
@@ -47,7 +47,7 @@ func verifyGnoGasPrice() {
 		path = ".store/main/key"
 		key  = []byte("gasPrice")
 	)
-	height := int64(10)
+	height := int64(2)
 	qres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
@@ -77,14 +77,6 @@ func verifyGnoGasPrice() {
 
 	err = tm2Proofs.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
-
-	ics23Proofs := convertProof(qres.Response.Value, height, tm2Proofs)
-	merkleProof := commitmenttypes.MerkleProof{Proofs: ics23Proofs}
-	merkleRoot := commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
-	specs := commitmenttypes.GetSDKSpecs()
-	mpath := commitmenttypes.NewMerklePath([]byte("main"), []byte("gasPrice"))
-	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, qres.Response.Value)
-	fmt.Println("VERIFY GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
 }
 
 func verifyGnoGasPriceICS23() {
@@ -115,11 +107,13 @@ func verifyGnoGasPriceICS23() {
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
 
 	// Verify proofs against app hash
-	// height++
+	height++
 	rres, err := gnocli().Block(&height)
 	if err != nil {
 		panic(err)
 	}
+	spew.Dump(proofs)
+	fmt.Printf("APPHASH %X\n", rres.Block.Header.AppHash)
 
 	var (
 		merkleRoot = commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
@@ -127,7 +121,7 @@ func verifyGnoGasPriceICS23() {
 		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), key)
 	)
 	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, qres.Response.Value)
-	fmt.Println("VERIFY ICS23 GNO GAS PRICE FROM TM LIGHTCLIENT CODE", err)
+	fmt.Println("VERIFY ICS23 GNO GAS PRICE", err)
 }
 
 func verifyGnoAbsence() {
