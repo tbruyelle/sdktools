@@ -20,9 +20,10 @@ func main() {
 	spew.Config.DisableMethods = true
 
 	// verifyGnoGasPrice()
-	verifyGnoGasPriceICS23()
-	// verifyA1GovParams()
 	// verifyGnoAbsence()
+	verifyGnoGasPriceICS23()
+	verifyGnoAbsenceICS23()
+	// verifyA1GovParams()
 	// verifyA1Absence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
@@ -48,7 +49,7 @@ func verifyGnoGasPrice() {
 		key  = []byte("gasPrice")
 	)
 	height := int64(2)
-	qres, err := gnocli().ABCIQueryWithOptions(
+	reqres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  true,
@@ -56,11 +57,14 @@ func verifyGnoGasPrice() {
 	if err != nil {
 		panic(err)
 	}
+	if reqres.Response.Error != nil {
+		panic(reqres.Response.Error.Error())
+	}
 
 	// Decode tm2 proof
 	prf := gnorootmulti.DefaultProofRuntime()
-	tm2Proofs := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
-	for i, op := range qres.Response.Proof.Ops {
+	tm2Proofs := make(gnomerkle.ProofOperators, len(reqres.Response.Proof.Ops))
+	for i, op := range reqres.Response.Proof.Ops {
 		po, err := prf.Decode(op)
 		if err != nil {
 			panic(err)
@@ -70,13 +74,53 @@ func verifyGnoGasPrice() {
 
 	// Verify proofs against app hash
 	height++
-	rres, err := gnocli().Block(&height)
+	blockres, err := gnocli().Block(&height)
 	if err != nil {
 		panic(err)
 	}
 
-	err = tm2Proofs.VerifyValue(rres.Block.Header.AppHash, "/main/gasPrice", qres.Response.Value)
+	err = tm2Proofs.VerifyValue(blockres.Block.Header.AppHash, "/main/gasPrice", reqres.Response.Value)
 	fmt.Println("VERIFY GNO GAS PRICE", err)
+}
+
+func verifyGnoAbsence() {
+	var (
+		path = ".store/main/key"
+		key  = []byte("does_not_exist_XX")
+	)
+	height := int64(10)
+	reqres, err := gnocli().ABCIQueryWithOptions(
+		path, key, gnoclient.ABCIQueryOptions{
+			Height: height,
+			Prove:  true,
+		})
+	if err != nil {
+		panic(err)
+	}
+	if reqres.Response.Error != nil {
+		panic(reqres.Response.Error.Error())
+	}
+
+	// Decode tm2 proof
+	prf := gnorootmulti.DefaultProofRuntime()
+	proofOps := make(gnomerkle.ProofOperators, len(reqres.Response.Proof.Ops))
+	for i, op := range reqres.Response.Proof.Ops {
+		po, err := prf.Decode(op)
+		if err != nil {
+			panic(err)
+		}
+		proofOps[i] = po
+	}
+
+	// Verify proofs against app hash
+	height++
+	blockres, err := gnocli().Block(&height)
+	if err != nil {
+		panic(err)
+	}
+
+	err = proofOps.Verify(blockres.Block.Header.AppHash, "/main/does_not_exist_XX", nil)
+	fmt.Println("VERIFY GNO ABSENCE", err)
 }
 
 func verifyGnoGasPriceICS23() {
@@ -85,7 +129,7 @@ func verifyGnoGasPriceICS23() {
 		key  = []byte("gasPrice")
 	)
 	height := int64(2)
-	qres, err := gnocli().ABCIQueryWithOptions(
+	reqres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  true,
@@ -93,10 +137,13 @@ func verifyGnoGasPriceICS23() {
 	if err != nil {
 		panic(err)
 	}
+	if reqres.Response.Error != nil {
+		panic(reqres.Response.Error.Error())
+	}
 
 	// Decode ics23 proof
-	proofs := make([]*ics23.CommitmentProof, len(qres.Response.Proof.Ops))
-	for i, op := range qres.Response.Proof.Ops {
+	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.Proof.Ops))
+	for i, op := range reqres.Response.Proof.Ops {
 		var p ics23.CommitmentProof
 		err = p.Unmarshal(op.Data)
 		if err != nil || p.Proof == nil {
@@ -108,29 +155,27 @@ func verifyGnoGasPriceICS23() {
 
 	// Verify proofs against app hash
 	height++
-	rres, err := gnocli().Block(&height)
+	blockres, err := gnocli().Block(&height)
 	if err != nil {
 		panic(err)
 	}
-	spew.Dump(proofs)
-	fmt.Printf("APPHASH %X\n", rres.Block.Header.AppHash)
 
 	var (
-		merkleRoot = commitmenttypes.NewMerkleRoot(rres.Block.Header.AppHash)
+		merkleRoot = commitmenttypes.NewMerkleRoot(blockres.Block.Header.AppHash)
 		specs      = commitmenttypes.GetSDKSpecs()
-		mpath      = commitmenttypes.NewMerklePath([]byte("gov"), key)
+		mpath      = commitmenttypes.NewMerklePath([]byte("main"), key)
 	)
-	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, qres.Response.Value)
+	err = merkleProof.VerifyMembership(specs, merkleRoot, mpath, reqres.Response.Value)
 	fmt.Println("VERIFY ICS23 GNO GAS PRICE", err)
 }
 
-func verifyGnoAbsence() {
+func verifyGnoAbsenceICS23() {
 	var (
 		path = ".store/main/key"
 		key  = []byte("does_not_exist_XX")
 	)
 	height := int64(10)
-	qres, err := gnocli().ABCIQueryWithOptions(
+	reqres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  true,
@@ -138,26 +183,35 @@ func verifyGnoAbsence() {
 	if err != nil {
 		panic(err)
 	}
-
-	// Decode tm2 proof
-	prf := gnorootmulti.DefaultProofRuntime()
-	proofOps := make(gnomerkle.ProofOperators, len(qres.Response.Proof.Ops))
-	for i, op := range qres.Response.Proof.Ops {
-		po, err := prf.Decode(op)
-		if err != nil {
-			panic(err)
-		}
-		proofOps[i] = po
+	if reqres.Response.Error != nil {
+		panic(reqres.Response.Error.Error())
 	}
+
+	// Decode ics23 proof
+	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.Proof.Ops))
+	for i, op := range reqres.Response.Proof.Ops {
+		var p ics23.CommitmentProof
+		err = p.Unmarshal(op.Data)
+		if err != nil || p.Proof == nil {
+			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
+		}
+		proofs[i] = &p
+	}
+	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
 
 	// Verify proofs against app hash
 	height++
-	rres, err := gnocli().Block(&height)
+	blockres, err := gnocli().Block(&height)
 	if err != nil {
 		panic(err)
 	}
 
-	err = proofOps.Verify(rres.Block.Header.AppHash, "/main/does_not_exist_XX", nil)
+	var (
+		merkleRoot = commitmenttypes.NewMerkleRoot(blockres.Block.Header.AppHash)
+		specs      = commitmenttypes.GetSDKSpecs()
+		mpath      = commitmenttypes.NewMerklePath([]byte("main"), key)
+	)
+	err = merkleProof.VerifyNonMembership(specs, merkleRoot, mpath)
 	fmt.Println("VERIFY GNO ABSENCE", err)
 }
 
