@@ -174,7 +174,7 @@ func verifyGnoAbsenceICS23() {
 		path = ".store/main/key"
 		key  = []byte("does_not_exist_XX")
 	)
-	height := int64(10)
+	height := int64(2)
 	reqres, err := gnocli().ABCIQueryWithOptions(
 		path, key, gnoclient.ABCIQueryOptions{
 			Height: height,
@@ -212,7 +212,7 @@ func verifyGnoAbsenceICS23() {
 		mpath      = commitmenttypes.NewMerklePath([]byte("main"), key)
 	)
 	err = merkleProof.VerifyNonMembership(specs, merkleRoot, mpath)
-	fmt.Println("VERIFY GNO ABSENCE", err)
+	fmt.Println("VERIFY ICS23 GNO ABSENCE", err)
 }
 
 func verifyA1GovParams() {
