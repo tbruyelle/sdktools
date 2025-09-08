@@ -11,6 +11,7 @@ def get_validators():
 def paginate(baseurl, items_key):
     next_key = ""
     items = []
+    print(f"Fetching {baseurl}...\n")
     while True:
         url = f"{baseurl}?pagination.key={next_key}"
         response = requests.get(url)
@@ -18,8 +19,8 @@ def paginate(baseurl, items_key):
             print(f"Error fetching {url}: {response.status_code}")
         data = response.json()
         items += data.get(items_key, [])
+        print(f"{len(items)} fetched items")
         next_key = data.get("pagination").get("next_key")
-        # print(f"{url} received {len(items)} next_key={next_key}")
         if next_key is None:
             return items
         next_key = urllib.parse.quote_plus(next_key)
