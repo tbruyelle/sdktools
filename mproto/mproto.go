@@ -1,4 +1,4 @@
-package mproto
+package main
 
 import (
 	"encoding/binary"
