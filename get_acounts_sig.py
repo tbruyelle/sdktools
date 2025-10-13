@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import bech32
-import requests
+import node
 import sys
 
 BASE_URLS = {
@@ -16,25 +16,7 @@ BECHS = {
 }
 
 
-def get_validators():
-    """
-    Fetches the list of all validators from the RPC endpoint.
-    Returns:
-        List of validators' operator addresses.
-    """
-    url = f"{BASE_URL}/cosmos/staking/v1beta1/validators"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        validators = data.get("validators", [])
-        return validators
-        # return [validator["operator_address"] for validator in validators]
-    else:
-        print(f"Error fetching validators: {response.status_code}")
-        return []
-
-
-def convert_valoper_to_account(valoper_address):
+def convert_valoper_to_account(bech, valoper_address):
     """
     Converts a validator operator address to a basic account address.
     """
@@ -42,26 +24,9 @@ def convert_valoper_to_account(valoper_address):
     hrp, data = bech32.bech32_decode(valoper_address)
 
     # Encode the data with the new prefix
-    account_address = bech32.bech32_encode(BECH, data)
+    account_address = bech32.bech32_encode(bech, data)
 
     return account_address
-
-
-def get_accounts_by_validator(address):
-    url = f"{BASE_URL}/cosmos/auth/v1beta1/accounts/{address}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        # delegations = data.get("delegation_responses", [])
-        return [
-            data
-            # delegation["delegation"]["delegator_address"] for delegation in delegations
-        ]
-    else:
-        print(
-            f"Error fetching accounts for validator {address}: {response.status_code}"
-        )
-        return []
 
 
 def main():
@@ -73,13 +38,11 @@ def main():
         return
 
     # Set the base URL to use based on command line parameter
-    global BASE_URL
-    BASE_URL = BASE_URLS[sys.argv[1]]
-    global BECH
-    BECH = BECHS[sys.argv[1]]
+    n = node.Node(BASE_URLS[sys.argv[1]])
+    bech = BECHS[sys.argv[1]]
     # Step 1: Get all validators
     print("Fetching all validators...")
-    validators = get_validators()
+    validators = n.get_validators()
 
     if not validators:
         print("No validators found.")
@@ -87,11 +50,11 @@ def main():
 
     # Step 2: Query accounts for each validator
     for validator in validators:
-        account = convert_valoper_to_account(validator["operator_address"])
+        account = convert_valoper_to_account(bech, validator["operator_address"])
         # print(
         #     f"Fetching accounts for validator: {validator['operator_address']} {account}"
         # )
-        info = get_accounts_by_validator(account)
+        info = n.get_account(account)
 
         acc = info[0]["account"]
 
