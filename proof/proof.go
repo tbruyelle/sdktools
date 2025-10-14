@@ -21,9 +21,9 @@ func main() {
 
 	// verifyGnoGasPrice()
 	// verifyGnoAbsence()
-	verifyGnoGasPriceICS23()
-	verifyGnoAbsenceICS23()
-	// verifyA1GovParams()
+	// verifyGnoGasPriceICS23()
+	// verifyGnoAbsenceICS23()
+	verifyA1GovParams()
 	// verifyA1Absence()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
@@ -240,7 +240,7 @@ func verifyA1GovParams() {
 
 	// Decode ics23 proof
 	proofs := make([]*ics23.CommitmentProof, len(reqres.Response.ProofOps.Ops))
-	spew.Dump(reqres.Response.ProofOps.Ops)
+	// spew.Dump(reqres.Response.ProofOps.Ops)
 	for i, op := range reqres.Response.ProofOps.Ops {
 		var p ics23.CommitmentProof
 		err = p.Unmarshal(op.Data)
@@ -248,6 +248,8 @@ func verifyA1GovParams() {
 			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
 		}
 		proofs[i] = &p
+		fmt.Printf("KEY %x\n", p.GetExist().Key)
+		fmt.Printf("VALUE %x\n", p.GetExist().Value)
 	}
 	spew.Dump(proofs)
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
