@@ -248,8 +248,6 @@ func verifyA1GovParams() {
 			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
 		}
 		proofs[i] = &p
-		fmt.Printf("KEY %x\n", p.GetExist().Key)
-		fmt.Printf("VALUE %x\n", p.GetExist().Value)
 	}
 	spew.Dump(proofs)
 	merkleProof := commitmenttypes.MerkleProof{Proofs: proofs}
