@@ -25,10 +25,10 @@ def main():
                 m[addr] = int(del_["balance"]["amount"])
             else:
                 m[addr] += int(del_["balance"]["amount"])
-    print("Done")
     m = dict(sorted(m.items(), key=lambda item: item[1], reverse=True))
     for delAddr, amount in m.items():
-        print(delAddr, amount)
+        amount = int(amount / 1_000_000)
+        print(delAddr, f"{amount:,}")
 
 
 main()
