@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import node
+import sys
 
 
 def main():
     n = node.Node("https://atomone-api.allinbits.services")
     print("Fetching all votes...")
-    votes = n.get_votes()
+    votes = n.get_votes(sys.argv[1])
     print(f"Fetched {len(votes)} votes.")
 
     if not votes:

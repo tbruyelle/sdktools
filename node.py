@@ -14,16 +14,16 @@ class Node:
 
     def get_delegations(self, val):
         return self.__paginate(
-            "/cosmos/staking/v1beta1/validators/{val}/delegations",
+            f"/cosmos/staking/v1beta1/validators/{val}/delegations",
             "delegation_responses",
         )
 
-    def get_votes(self):
-        return self.__paginate("/atomone/gov/v1/proposals/15/votes", "votes")
+    def get_votes(self, id):
+        return self.__paginate(f"/atomone/gov/v1/proposals/{id}/votes", "votes")
 
     def get_delegator_delegations(self, addr):
         return self.__paginate(
-            "/cosmos/staking/v1beta1/delegations/{addr}",
+            f"/cosmos/staking/v1beta1/delegations/{addr}",
             "delegation_responses",
         )
 
@@ -71,16 +71,16 @@ class Node:
     def __paginate(self, uri, items_key):
         next_key = ""
         items = []
-        url = self.url + uri
-        print(f"Fetching {url}...\n")
         while True:
-            url = f"{url}?pagination.key={next_key}"
+            url = f"{self.url}{uri}?pagination.key={next_key}"
+            print(f"Fetching {url}")
             response = requests.get(url)
             if response.status_code != 200:
                 print(f"Error fetching {url}: {response.status_code}")
+                return []
             data = response.json()
             items += data.get(items_key, [])
-            print(f"{len(items)} fetched items")
+            print(f"Fetched {len(items)} items")
             next_key = data.get("pagination").get("next_key")
             if next_key is None:
                 return items
