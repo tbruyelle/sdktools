@@ -7,7 +7,16 @@ import (
 	ics23 "github.com/cosmos/ics23/go"
 	"github.com/davecgh/go-spew/spew"
 
+	dbm "github.com/cosmos/cosmos-db"
+
+	channelv2types "github.com/cosmos/ibc-go/v10/modules/core/04-channel/v2/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v10/modules/core/23-commitment/types"
+
+	"cosmossdk.io/log"
+	"cosmossdk.io/store/iavl"
+	"cosmossdk.io/store/metrics"
+	"cosmossdk.io/store/rootmulti"
+	storetypes "cosmossdk.io/store/types"
 
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 
@@ -23,8 +32,9 @@ func main() {
 	// verifyGnoAbsence()
 	// verifyGnoGasPriceICS23()
 	// verifyGnoAbsenceICS23()
-	verifyA1GovParams()
+	// verifyA1GovParams()
 	// verifyA1Absence()
+	proofGen()
 
 	// TODO find how to determine key to r/ibc packet commitment/ack
 	// objectID: oid:<OBJECT_ID> where OBJECT_ID is REALM_ID:sequence
@@ -41,6 +51,74 @@ func main() {
 	// - `1` is the byte indicator of a commitment packet (2 for receipt and 3 for
 	// ack)
 	// - `42` is the sequence number of the commitment packet
+}
+
+func proofGen() {
+	db := dbm.NewMemDB()
+	store := rootmulti.NewStore(db, log.NewNopLogger(), metrics.NewNoOpMetrics())
+	iavlStoreKey := storetypes.NewKVStoreKey("iavlStoreKey")
+
+	store.MountStoreWithDB(iavlStoreKey, storetypes.StoreTypeIAVL, nil)
+	err := store.LoadVersion(0)
+	if err != nil {
+		panic(err)
+	}
+	iavlStore := store.GetCommitStore(iavlStoreKey).(*iavl.Store)
+	// fill with fake data
+	for _, ikey := range []byte{0x11, 0x32, 0x50, 0x72, 0x99} {
+		key := []byte{ikey}
+		iavlStore.Set(key, key)
+	}
+	// Enter the key we want to proof
+	key := []byte("prefix207-tendermint-42\x03\x00\x00\x00\x00\x00\x00\x00\x01")
+	value := channelv2types.CommitAcknowledgement(
+		channelv2types.Acknowledgement{
+			AppAcknowledgements: [][]byte{[]byte("ack")},
+		},
+	)
+	iavlStore.Set(key, value)
+
+	cid := store.Commit()
+
+	// Get Proof
+	res, err := store.Query(&storetypes.RequestQuery{
+		Path:  "/iavlStoreKey/key",
+		Data:  key,
+		Prove: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Decode ics23 proof
+	proofs := make([]*ics23.CommitmentProof, len(res.ProofOps.Ops))
+	// spew.Dump(reqres.Response.ProofOps.Ops)
+	for i, op := range res.ProofOps.Ops {
+		var p ics23.CommitmentProof
+		err = p.Unmarshal(op.Data)
+		if err != nil || p.Proof == nil {
+			panic(fmt.Sprintf("could not unmarshal proof op into CommitmentProof at index %d: %v", i, err))
+		}
+		proofs[i] = &p
+	}
+	// Dump proof
+	fmt.Printf("ROOT %x\n", cid.Hash)
+	for i, p := range proofs {
+		fmt.Printf("KEY %x %q\n", p.GetExist().Key, p.GetExist().Key)
+		fmt.Printf("VAL %x\n", p.GetExist().Value)
+		fmt.Printf("%d LEAF PREFIX %x\n", i, p.GetExist().Leaf.Prefix)
+		for j, op := range p.GetExist().Path {
+			fmt.Printf("\t%d OP PREFIX %x\n", j, op.Prefix)
+			fmt.Printf("\t%d OP SUFFIX %x\n", j, op.Suffix)
+		}
+	}
+
+	// Verify proof.
+	prt := rootmulti.DefaultProofRuntime()
+	err = prt.VerifyValue(res.ProofOps, cid.Hash, "/iavlStoreKey/"+string(key), value)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func verifyGnoGasPrice() {
