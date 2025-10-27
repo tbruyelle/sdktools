@@ -73,7 +73,7 @@ func proofGen() {
 	key := []byte("prefix207-tendermint-42\x03\x00\x00\x00\x00\x00\x00\x00\x01")
 	value := channelv2types.CommitAcknowledgement(
 		channelv2types.Acknowledgement{
-			AppAcknowledgements: [][]byte{[]byte(`{"response":{"result":"1"}}`)},
+			AppAcknowledgements: [][]byte{[]byte(`{"response":{"result":"BQ=="}}`)},
 		},
 	)
 	iavlStore.Set(key, value)
