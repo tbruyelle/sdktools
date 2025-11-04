@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 
 	ics23 "github.com/cosmos/ics23/go"
@@ -71,9 +72,11 @@ func proofGen() {
 	}
 	// Enter the key we want to proof
 	key := []byte("prefix207-tendermint-42\x03\x00\x00\x00\x00\x00\x00\x00\x01")
+	bz := sha256.Sum256([]byte("UNIVERSAL_ERROR_ACKNOWLEDGEMENT"))
 	value := channelv2types.CommitAcknowledgement(
 		channelv2types.Acknowledgement{
-			AppAcknowledgements: [][]byte{[]byte(`{"response":{"result":"BQ=="}}`)},
+			AppAcknowledgements: [][]byte{bz[:]},
+			// AppAcknowledgements: [][]byte{[]byte(`{"response":{"result":"BQ=="}}`)},
 		},
 	)
 	iavlStore.Set(key, value)
