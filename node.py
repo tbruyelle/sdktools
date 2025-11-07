@@ -21,6 +21,12 @@ class Node:
     def get_votes(self, id):
         return self.__paginate(f"/atomone/gov/v1/proposals/{id}/votes", "votes")
 
+    def get_ibc_denoms(self):
+        # for IBC-V10
+        # return self.__paginate("/ibc/apps/transfer/v1/denoms", "denoms")
+        # for IBC-v7
+        return self.__paginate("/ibc/apps/transfer/v1/denom_traces", "denom_traces")
+
     def get_delegator_delegations(self, addr):
         return self.__paginate(
             f"/cosmos/staking/v1beta1/delegations/{addr}",
