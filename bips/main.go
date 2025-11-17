@@ -30,8 +30,6 @@ func main() {
 		panic(fmt.Errorf("%s is not a valid hd path", *hdpath))
 	}
 	var mnemonic, passphrase string
-	// mnemonic = "burden junk salon cabbage energy damp view camp pole endorse isolate arrange struggle reflect easy hawk chat social finish prepare wagon utility drive input"
-	// atone1rku58s0axgpex6e2uuarxpcrzu3gyur2wkhyqd
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		bz, err := io.ReadAll(os.Stdin)
@@ -58,6 +56,10 @@ func main() {
 		}
 		fmt.Println("Generated mnemonic:", mnemonic)
 	}
+	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, hdPaths[*hdpath], *prefix))
+}
+
+func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
 	// Following comments use	"github.com/tyler-smith/go-bip32"
@@ -73,11 +75,10 @@ func main() {
 	}
 
 	// Derivation
-	derivedPriv, err := bip32.DerivePath(privkey, hdPaths[*hdpath])
+	derivedPriv, err := bip32.DerivePath(privkey, hdpath)
 	if err != nil {
 		panic(err)
 	}
 	privKey := secp256k1.PrivKey{Key: derivedPriv.ECPrivateKeyBytes()}
-	bech := types.MustBech32ifyAddressBytes(*prefix, privKey.PubKey().Address())
-	fmt.Println("bech: ", bech)
+	return types.MustBech32ifyAddressBytes(prefix, privKey.PubKey().Address())
 }
