@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
+	"strings"
 
 	"github.com/cosmos/go-bip39"
 	"github.com/gofika/bip32"
@@ -14,9 +17,18 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
+var hdPaths = map[string]string{
+	"cosmos": "m/44'/118'/0'/0/0",
+	"btc":    "m/84'/0'/0'/0/0",
+}
+
 func main() {
 	prefix := flag.String("prefix", "atone", "prefix of the address")
+	hdpath := flag.String("hdpath", "cosmos", "one of "+strings.Join(slices.Sorted(maps.Keys(hdPaths)), ", "))
 	flag.Parse()
+	if _, ok := hdPaths[*hdpath]; !ok {
+		panic(fmt.Errorf("%s is not a valid hd path", *hdpath))
+	}
 	var mnemonic, passphrase string
 	// mnemonic = "burden junk salon cabbage energy damp view camp pole endorse isolate arrange struggle reflect easy hawk chat social finish prepare wagon utility drive input"
 	// atone1rku58s0axgpex6e2uuarxpcrzu3gyur2wkhyqd
@@ -61,8 +73,7 @@ func main() {
 	}
 
 	// Derivation
-	atomHDPath := "m/44'/118'/0'/0/0"
-	derivedPriv, err := bip32.DerivePath(privkey, atomHDPath)
+	derivedPriv, err := bip32.DerivePath(privkey, hdPaths[*hdpath])
 	if err != nil {
 		panic(err)
 	}
