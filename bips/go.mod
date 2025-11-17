@@ -6,7 +6,6 @@ require (
 	github.com/cosmos/cosmos-sdk v0.53.4
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gofika/bip32 v0.0.0-20251103031813-d5607f5a2b3b
-	github.com/tyler-smith/go-bip32 v1.0.0
 )
 
 require (
@@ -20,8 +19,6 @@ require (
 	cosmossdk.io/store v1.1.2 // indirect
 	cosmossdk.io/x/tx v0.14.0 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
-	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
-	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.6 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect

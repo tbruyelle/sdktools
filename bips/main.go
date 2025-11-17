@@ -2,53 +2,61 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/cosmos/go-bip39"
-	dbip32 "github.com/gofika/bip32"
-	"github.com/tyler-smith/go-bip32"
+	"github.com/gofika/bip32"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 )
 
 func main() {
-	ent, err := bip39.NewEntropy(256)
-	if err != nil {
-		panic(err)
-	}
-	mnemonic, err := bip39.NewMnemonic(ent)
-	if err != nil {
-		panic(err)
+	var mnemonic string
+	// mnemonic = "burden junk salon cabbage energy damp view camp pole endorse isolate arrange struggle reflect easy hawk chat social finish prepare wagon utility drive input"
+	// atone1rku58s0axgpex6e2uuarxpcrzu3gyur2wkhyqd
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		fmt.Println("Reading mnemonic from stdin...")
+		bz, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
+		}
+		mnemonic = strings.TrimSpace(string(bz))
+	} else {
+		ent, err := bip39.NewEntropy(256)
+		if err != nil {
+			panic(err)
+		}
+		mnemonic, err = bip39.NewMnemonic(ent)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Generated mnemonic:", mnemonic)
 	}
 	seed := bip39.NewSeed(mnemonic, "")
 
-	masterKey, err := bip32.NewMasterKey(seed)
+	// Following comments use	"github.com/tyler-smith/go-bip32"
+	// It prints the addresses with the xpriv/xpub prefix
+	// masterKey, _ := bip32.NewMasterKey(seed)
+	// publicKey := masterKey.PublicKey()
+	// fmt.Println("Master private key:", masterKey)
+	// fmt.Println("Master public key:", publicKey)
+
+	privkey, err := bip32.NewExtendedKey(seed)
 	if err != nil {
 		panic(err)
 	}
-	publicKey := masterKey.PublicKey()
-
-	// Display mnemonic and keys
-	fmt.Println("Mnemonic: ", mnemonic)
-	fmt.Println("Master private key: ", masterKey)
-	fmt.Println("Master public key: ", publicKey)
-
-	dkey, err := dbip32.NewExtendedKey(seed)
-	if err != nil {
-		panic(err)
-	}
-	b58 := bip32.BitcoinBase58Encoding.EncodeToString(dkey.ECPrivateKeyBytes())
-	fmt.Println("dMaster private key: ", b58)
-	kkey := bip32.BitcoinBase58Encoding.EncodeToString(masterKey.Key)
-	fmt.Println("xxxxxxx private key: ", kkey)
 
 	// Derivation
 	atomHDPath := "m/44'/118'/0'/0/0"
-	dkey2, err := dbip32.DerivePath(dkey, atomHDPath)
+	derivedPriv, err := bip32.DerivePath(privkey, atomHDPath)
 	if err != nil {
 		panic(err)
 	}
-	privKey := secp256k1.PrivKey{Key: dkey2.ECPrivateKeyBytes()}
+	privKey := secp256k1.PrivKey{Key: derivedPriv.ECPrivateKeyBytes()}
 	bech := types.MustBech32ifyAddressBytes("atone", privKey.PubKey().Address())
 	fmt.Println("bech: ", bech)
 }
