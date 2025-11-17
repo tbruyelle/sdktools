@@ -19,7 +19,7 @@ import (
 
 var hdPaths = map[string]string{
 	"cosmos": "m/44'/118'/0'/0/0",
-	"btc":    "m/84'/0'/0'/0/0",
+	"segwit": "m/84'/0'/0'/0/0",
 }
 
 func main() {
