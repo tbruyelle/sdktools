@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,8 @@ import (
 )
 
 func main() {
+	prefix := flag.String("prefix", "atone", "prefix of the address")
+	flag.Parse()
 	var mnemonic string
 	// mnemonic = "burden junk salon cabbage energy damp view camp pole endorse isolate arrange struggle reflect easy hawk chat social finish prepare wagon utility drive input"
 	// atone1rku58s0axgpex6e2uuarxpcrzu3gyur2wkhyqd
@@ -57,6 +60,6 @@ func main() {
 		panic(err)
 	}
 	privKey := secp256k1.PrivKey{Key: derivedPriv.ECPrivateKeyBytes()}
-	bech := types.MustBech32ifyAddressBytes("atone", privKey.PubKey().Address())
+	bech := types.MustBech32ifyAddressBytes(*prefix, privKey.PubKey().Address())
 	fmt.Println("bech: ", bech)
 }
