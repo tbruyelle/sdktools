@@ -11,19 +11,24 @@ import (
 	"strings"
 
 	"github.com/cosmos/go-bip39"
-	"github.com/gofika/bip32"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
-
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/types"
 )
 
-var hdPaths = map[string]string{
-	"cosmos": "m/44'/118'/0'/0/0",
-	"segwit": "m/84'/0'/0'/0/0",
+var hdPaths = map[string][]uint32{
+	"cosmos": { // m/44'/118'/0'/0/0
+		44 + hdkeychain.HardenedKeyStart,
+		118 + hdkeychain.HardenedKeyStart,
+		0 + hdkeychain.HardenedKeyStart, 0, 0,
+	},
+	"segwit": { // "m/84'/0'/0'/0/0",
+		84 + hdkeychain.HardenedKeyStart,
+		0 + hdkeychain.HardenedKeyStart,
+		0 + hdkeychain.HardenedKeyStart, 0, 0,
+	},
 }
 
 func main() {
@@ -60,13 +65,27 @@ func main() {
 		}
 		fmt.Println("Generated mnemonic:", mnemonic)
 	}
-	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, hdPaths[*hdpath], *prefix))
+	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, hdPaths[*hdpath], *prefix, nil))
 	fmt.Println("btc: ", deriveBtc(mnemonic, passphrase))
 }
 
-func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
+func deriveBech32(mnemonic, passphrase string, hdpath []uint32, prefix string, witnessVersion []byte) string {
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
+	// Derive the master private key
+	masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		panic(err)
+	}
+
+	// Derive the first child private key
+	currentKey := masterKey
+	for _, index := range hdpath {
+		currentKey, err = currentKey.Derive(index)
+		if err != nil {
+			panic(err)
+		}
+	}
 	// Following comments use	"github.com/tyler-smith/go-bip32"
 	// It prints the addresses with the xpriv/xpub prefix
 	// masterKey, _ := hbip32.NewMasterKey(seed)
@@ -74,18 +93,24 @@ func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
 	// fmt.Println("Master private key:", masterKey)
 	// fmt.Println("Master public key:", publicKey)
 
-	privkey, err := bip32.NewExtendedKey(seed)
+	// Get the private key
+	privKey, err := currentKey.ECPrivKey()
 	if err != nil {
 		panic(err)
 	}
-
-	// Derivation
-	derivedPriv, err := bip32.DerivePath(privkey, hdpath)
+	// Get the public key
+	pubKey := privKey.PubKey()
+	witnessProg := btcutil.Hash160(pubKey.SerializeCompressed())
+	bz, err := bech32.ConvertBits(witnessProg, 8, 5, true)
 	if err != nil {
 		panic(err)
 	}
-	privKey := secp256k1.PrivKey{Key: derivedPriv.ECPrivateKeyBytes()}
-	return types.MustBech32ifyAddressBytes(prefix, privKey.PubKey().Address())
+	bz = append(witnessVersion, bz...)
+	addr, err := bech32.Encode(prefix, bz)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 func deriveBtc(mnemonic, passphrase string) string {
