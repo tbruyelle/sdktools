@@ -3,9 +3,12 @@ module github.com/tbruyelle/sdktools/bips
 go 1.25.4
 
 require (
+	github.com/btcsuite/btcd v0.24.2
+	github.com/btcsuite/btcd/btcutil v1.1.6
 	github.com/cosmos/cosmos-sdk v0.53.4
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gofika/bip32 v0.0.0-20251103031813-d5607f5a2b3b
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
@@ -21,6 +24,7 @@ require (
 	github.com/DataDog/zstd v1.5.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.6 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.2 // indirect
 	github.com/bytedance/sonic/loader v0.4.0 // indirect
@@ -84,7 +88,6 @@ require (
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect

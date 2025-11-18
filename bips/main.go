@@ -13,6 +13,10 @@ import (
 	"github.com/cosmos/go-bip39"
 	"github.com/gofika/bip32"
 
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 )
@@ -57,6 +61,7 @@ func main() {
 		fmt.Println("Generated mnemonic:", mnemonic)
 	}
 	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, hdPaths[*hdpath], *prefix))
+	fmt.Println("btc: ", deriveBtc(mnemonic, passphrase))
 }
 
 func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
@@ -64,7 +69,7 @@ func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
 
 	// Following comments use	"github.com/tyler-smith/go-bip32"
 	// It prints the addresses with the xpriv/xpub prefix
-	// masterKey, _ := bip32.NewMasterKey(seed)
+	// masterKey, _ := hbip32.NewMasterKey(seed)
 	// publicKey := masterKey.PublicKey()
 	// fmt.Println("Master private key:", masterKey)
 	// fmt.Println("Master public key:", publicKey)
@@ -81,4 +86,40 @@ func deriveBech32(mnemonic, passphrase, hdpath, prefix string) string {
 	}
 	privKey := secp256k1.PrivKey{Key: derivedPriv.ECPrivateKeyBytes()}
 	return types.MustBech32ifyAddressBytes(prefix, privKey.PubKey().Address())
+}
+
+func deriveBtc(mnemonic, passphrase string) string {
+	// Convert mnemonic to seed
+	seed := bip39.NewSeed(mnemonic, passphrase)
+
+	// Derive the master private key
+	masterKey, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		panic(err)
+	}
+
+	// Derive the first child private key (m/84'/0'/0'/0/0 for P2WPKH)
+	path := []uint32{84 + hdkeychain.HardenedKeyStart, 0 + hdkeychain.HardenedKeyStart, 0 + hdkeychain.HardenedKeyStart, 0, 0}
+	currentKey := masterKey
+	for _, index := range path {
+		currentKey, err = currentKey.Derive(index)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Get the private key
+	privKey, err := currentKey.ECPrivKey()
+	if err != nil {
+		panic(err)
+	}
+	// Get the public key
+	pubKey := privKey.PubKey()
+	witnessProg := btcutil.Hash160(pubKey.SerializeCompressed())
+	address, err := btcutil.NewAddressWitnessPubKeyHash(witnessProg, &chaincfg.MainNetParams)
+	if err != nil {
+		panic(err)
+	}
+	// Encode the address in Bech32 format
+	return address.EncodeAddress()
 }
