@@ -20,6 +20,7 @@ func TestDeriveBech32(t *testing.T) {
 
 		assert.Equal(t, "atone159k2tt0ruh8jlyz5q4fjmjxuxpg4pvdp333avs", bech)
 	})
+
 	t.Run("cosmos+customHRP", func(t *testing.T) {
 		cfg := configs["cosmos"]
 		cfg.hrp = "osmo"
@@ -28,11 +29,20 @@ func TestDeriveBech32(t *testing.T) {
 		assert.Equal(t, "osmo1rku58s0axgpex6e2uuarxpcrzu3gyur2gdcnq8", bech)
 	})
 
+	t.Run("cosmos+index=1", func(t *testing.T) {
+		cfg := configs["cosmos"]
+		cfg.hdpath[4] = 1
+		bech := deriveBech32(mnemonic, "", cfg)
+
+		assert.Equal(t, "atone1nqt3x3zjtnvxvjxggckghkw97htgrz43jyzca6", bech)
+	})
+
 	t.Run("btc", func(t *testing.T) {
 		bech := deriveBech32(mnemonic, "", configs["segwit"])
 
 		assert.Equal(t, "bc1qnqqu45huquxzz6sysr7denuxmg0mh09mq2usc6", bech)
 	})
+
 	t.Run("btc+passphrase", func(t *testing.T) {
 		bech := deriveBech32(mnemonic, "passphrase", configs["segwit"])
 

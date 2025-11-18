@@ -47,6 +47,7 @@ var configs = map[string]config{
 func main() {
 	cfg := flag.String("cfg", "cosmos", "one of "+strings.Join(slices.Sorted(maps.Keys(configs)), ", "))
 	hrp := flag.String("hrp", "", "bech32 address prefix (overrides cfg.hrp)")
+	idx := flag.Uint("idx", 0, "address index derivation")
 	flag.Parse()
 	config, ok := configs[*cfg]
 	if !ok {
@@ -55,6 +56,7 @@ func main() {
 	if *hrp != "" {
 		config.hrp = *hrp
 	}
+	config.hdpath[4] = uint32(*idx)
 
 	var mnemonic, passphrase string
 	stat, _ := os.Stdin.Stat()
