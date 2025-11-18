@@ -18,26 +18,44 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
-var hdPaths = map[string][]uint32{
-	"cosmos": { // m/44'/118'/0'/0/0
-		44 + hdkeychain.HardenedKeyStart,
-		118 + hdkeychain.HardenedKeyStart,
-		0 + hdkeychain.HardenedKeyStart, 0, 0,
+type config struct {
+	hdpath         []uint32
+	witnessVersion []byte
+	hrp            string
+}
+
+var configs = map[string]config{
+	"cosmos": {
+		hdpath: []uint32{ // m/44'/118'/0'/0/0
+			44 + hdkeychain.HardenedKeyStart,
+			118 + hdkeychain.HardenedKeyStart,
+			0 + hdkeychain.HardenedKeyStart, 0, 0,
+		},
+		hrp: "atone",
 	},
-	"segwit": { // "m/84'/0'/0'/0/0",
-		84 + hdkeychain.HardenedKeyStart,
-		0 + hdkeychain.HardenedKeyStart,
-		0 + hdkeychain.HardenedKeyStart, 0, 0,
+	"segwit": {
+		hdpath: []uint32{ // "m/84'/0'/0'/0/0",
+			84 + hdkeychain.HardenedKeyStart,
+			0 + hdkeychain.HardenedKeyStart,
+			0 + hdkeychain.HardenedKeyStart, 0, 0,
+		},
+		witnessVersion: []byte{0x00},
+		hrp:            "bc",
 	},
 }
 
 func main() {
-	prefix := flag.String("prefix", "atone", "prefix of the address")
-	hdpath := flag.String("hdpath", "cosmos", "one of "+strings.Join(slices.Sorted(maps.Keys(hdPaths)), ", "))
+	cfg := flag.String("cfg", "cosmos", "one of "+strings.Join(slices.Sorted(maps.Keys(configs)), ", "))
+	hrp := flag.String("hrp", "", "bech32 address prefix (overrides cfg.hrp)")
 	flag.Parse()
-	if _, ok := hdPaths[*hdpath]; !ok {
-		panic(fmt.Errorf("%s is not a valid hd path", *hdpath))
+	config, ok := configs[*cfg]
+	if !ok {
+		panic(fmt.Errorf("%s is not a valid config", *cfg))
 	}
+	if *hrp != "" {
+		config.hrp = *hrp
+	}
+
 	var mnemonic, passphrase string
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
@@ -65,11 +83,10 @@ func main() {
 		}
 		fmt.Println("Generated mnemonic:", mnemonic)
 	}
-	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, hdPaths[*hdpath], *prefix, nil))
-	fmt.Println("btc: ", deriveBtc(mnemonic, passphrase))
+	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, config))
 }
 
-func deriveBech32(mnemonic, passphrase string, hdpath []uint32, prefix string, witnessVersion []byte) string {
+func deriveBech32(mnemonic, passphrase string, config config) string {
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
 	// Derive the master private key
@@ -80,7 +97,7 @@ func deriveBech32(mnemonic, passphrase string, hdpath []uint32, prefix string, w
 
 	// Derive the first child private key
 	currentKey := masterKey
-	for _, index := range hdpath {
+	for _, index := range config.hdpath {
 		currentKey, err = currentKey.Derive(index)
 		if err != nil {
 			panic(err)
@@ -105,14 +122,15 @@ func deriveBech32(mnemonic, passphrase string, hdpath []uint32, prefix string, w
 	if err != nil {
 		panic(err)
 	}
-	bz = append(witnessVersion, bz...)
-	addr, err := bech32.Encode(prefix, bz)
+	bz = append(config.witnessVersion, bz...)
+	addr, err := bech32.Encode(config.hrp, bz)
 	if err != nil {
 		panic(err)
 	}
 	return addr
 }
 
+/*
 func deriveBtc(mnemonic, passphrase string) string {
 	// Convert mnemonic to seed
 	seed := bip39.NewSeed(mnemonic, passphrase)
@@ -148,3 +166,4 @@ func deriveBtc(mnemonic, passphrase string) string {
 	// Encode the address in Bech32 format
 	return address.EncodeAddress()
 }
+*/
