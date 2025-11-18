@@ -19,14 +19,14 @@ import (
 )
 
 type config struct {
-	hdpath         []uint32
+	hdpaths        []uint32
 	witnessVersion []byte
 	hrp            string
 }
 
 var configs = map[string]config{
 	"cosmos": {
-		hdpath: []uint32{ // m/44'/118'/0'/0/0
+		hdpaths: []uint32{ // m/44'/118'/0'/0/0
 			44 + hdkeychain.HardenedKeyStart,
 			118 + hdkeychain.HardenedKeyStart,
 			0 + hdkeychain.HardenedKeyStart, 0, 0,
@@ -34,7 +34,7 @@ var configs = map[string]config{
 		hrp: "atone",
 	},
 	"segwit": {
-		hdpath: []uint32{ // "m/84'/0'/0'/0/0",
+		hdpaths: []uint32{ // "m/84'/0'/0'/0/0",
 			84 + hdkeychain.HardenedKeyStart,
 			0 + hdkeychain.HardenedKeyStart,
 			0 + hdkeychain.HardenedKeyStart, 0, 0,
@@ -48,6 +48,7 @@ func main() {
 	cfg := flag.String("cfg", "cosmos", "one of "+strings.Join(slices.Sorted(maps.Keys(configs)), ", "))
 	hrp := flag.String("hrp", "", "bech32 address prefix (overrides cfg.hrp)")
 	idx := flag.Uint("idx", 0, "address index derivation")
+	account := flag.Uint("account", 0, "address account derivation")
 	flag.Parse()
 	config, ok := configs[*cfg]
 	if !ok {
@@ -56,7 +57,6 @@ func main() {
 	if *hrp != "" {
 		config.hrp = *hrp
 	}
-	config.hdpath[4] = uint32(*idx)
 
 	var mnemonic, passphrase string
 	stat, _ := os.Stdin.Stat()
@@ -85,10 +85,12 @@ func main() {
 		}
 		fmt.Println("Generated mnemonic:", mnemonic)
 	}
-	fmt.Println("bech: ", deriveBech32(mnemonic, passphrase, config))
+	fmt.Println(
+		deriveBech32(mnemonic, passphrase, config, uint32(*account), uint32(*idx)),
+	)
 }
 
-func deriveBech32(mnemonic, passphrase string, config config) string {
+func deriveBech32(mnemonic, passphrase string, config config, account, index uint32) string {
 	seed := bip39.NewSeed(mnemonic, passphrase)
 
 	// Derive the master private key
@@ -99,7 +101,11 @@ func deriveBech32(mnemonic, passphrase string, config config) string {
 
 	// Derive the first child private key
 	currentKey := masterKey
-	for _, index := range config.hdpath {
+	// Copy config hdpaths so we can alter it with custom account and index
+	hdpaths := slices.Clone(config.hdpaths)
+	hdpaths[2] = account + hdkeychain.HardenedKeyStart
+	hdpaths[4] = index
+	for _, index := range hdpaths {
 		currentKey, err = currentKey.Derive(index)
 		if err != nil {
 			panic(err)
