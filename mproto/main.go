@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"strings"
 	"time"
 
 	cmtproto "github.com/cometbft/cometbft/api/cometbft/types/v1"
@@ -14,37 +15,45 @@ import (
 
 func main() {
 	var (
-		chainID          = "atomone-1"
-		heights          = []int64{5, 3}
-		round      int64 = 0
-		timestamp        = toTime("2025-09-25T07:55:57.306746166Z")
-		blockhash        = b64Dec("NpiImIJoaSaIucwNs5cqpgMsL/8wxEPYC3P0jA5aQSI=")
-		parsethash       = b64Dec("QqzwnLzvixIcUz+hPeUQjDV6NaLkFRKXACCxJIrBHzw=")
-		privkeyStr       = flag.String("privkey", "", "base64 encoded private key")
+		privkeysStr = flag.String("privkeys", "", "base64 encoded private key (sep by comma)")
+		height      = flag.Int64("height", 1, "height of the block")
 	)
 	flag.Parse()
-	privk := ed25519.GenPrivKey()
-	if *privkeyStr != "" {
-		privk = ed25519.PrivKey(b64Dec(*privkeyStr))
-	}
-	fmt.Println("ADDR:", base64.StdEncoding.EncodeToString(privk.PubKey().Address()))
-	fmt.Println("PUBK:", base64.StdEncoding.EncodeToString(privk.PubKey().Bytes()))
-	fmt.Println("PRIV:", base64.StdEncoding.EncodeToString(privk.Bytes()))
-	for _, height := range heights {
-		vote := cmtproto.CanonicalVote{
-			Type:   types.PrecommitType,
-			Height: height,
-			Round:  round,
-			BlockID: &cmtproto.CanonicalBlockID{
-				Hash: blockhash,
-				PartSetHeader: cmtproto.CanonicalPartSetHeader{
-					Total: 1,
-					Hash:  parsethash,
-				},
-			},
-			Timestamp: timestamp,
-			ChainID:   chainID,
+	var privks []ed25519.PrivKey
+	if *privkeysStr != "" {
+		for s := range strings.SplitSeq(*privkeysStr, ",") {
+			privks = append(privks, ed25519.PrivKey(b64Dec(s)))
 		}
+	} else {
+		privks = append(privks, ed25519.GenPrivKey())
+	}
+	for i, privk := range privks {
+		fmt.Println("PRIVK", i)
+		fmt.Println("\tADDR:", base64.StdEncoding.EncodeToString(privk.PubKey().Address()))
+		fmt.Println("\tPUBK:", base64.StdEncoding.EncodeToString(privk.PubKey().Bytes()))
+		fmt.Println("\tPRIV:", base64.StdEncoding.EncodeToString(privk.Bytes()))
+
+		var (
+			chainID          = "atomone-1"
+			round      int64 = 0
+			timestamp        = toTime("2025-09-25T07:55:57.306746166Z")
+			blockhash        = b64Dec("NpiImIJoaSaIucwNs5cqpgMsL/8wxEPYC3P0jA5aQSI=")
+			parsethash       = b64Dec("QqzwnLzvixIcUz+hPeUQjDV6NaLkFRKXACCxJIrBHzw=")
+			vote             = cmtproto.CanonicalVote{
+				Type:   types.PrecommitType,
+				Height: *height,
+				Round:  round,
+				BlockID: &cmtproto.CanonicalBlockID{
+					Hash: blockhash,
+					PartSetHeader: cmtproto.CanonicalPartSetHeader{
+						Total: 1,
+						Hash:  parsethash,
+					},
+				},
+				Timestamp: timestamp,
+				ChainID:   chainID,
+			}
+		)
 		bz, err := protoio.MarshalDelimited(&vote)
 		if err != nil {
 			panic(err)
@@ -55,7 +64,7 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Printf("SIGN h=%d: %s\n", height, base64.StdEncoding.EncodeToString(signature))
+		fmt.Printf("\tSIGN h=%d: %s\n", *height, base64.StdEncoding.EncodeToString(signature))
 	}
 }
 
