@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"strings"
@@ -28,10 +29,10 @@ func main() {
 		privks = append(privks, ed25519.GenPrivKey())
 	}
 	for i, privk := range privks {
-		fmt.Println("PRIVK", i)
-		fmt.Println("\tADDR:", base64.StdEncoding.EncodeToString(privk.PubKey().Address()))
-		fmt.Println("\tPUBK:", base64.StdEncoding.EncodeToString(privk.PubKey().Bytes()))
-		fmt.Println("\tPRIV:", base64.StdEncoding.EncodeToString(privk.Bytes()))
+		fmt.Printf("validator #%d:\n", i)
+		fmt.Printf("\taddress:%s\n", base64.StdEncoding.EncodeToString(privk.PubKey().Address()))
+		fmt.Printf("\tpubkey:%s\n", base64.StdEncoding.EncodeToString(privk.PubKey().Bytes()))
+		fmt.Printf("\tprivkey:%s\n", base64.StdEncoding.EncodeToString(privk.Bytes()))
 
 		var (
 			chainID          = "atomone-1"
@@ -64,7 +65,9 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Printf("\tSIGN h=%d: %s\n", *height, base64.StdEncoding.EncodeToString(signature))
+		bz, _ = json.MarshalIndent(vote, "\t", "  ")
+		fmt.Printf("\tvote: %s\n", string(bz))
+		fmt.Printf("\tsignature: %s\n", base64.StdEncoding.EncodeToString(signature))
 	}
 }
 
