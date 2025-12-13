@@ -138,7 +138,6 @@ func deriveBech32(mnemonic, passphrase string, config config, account, index uin
 	return addr
 }
 
-/*
 func deriveBtc(mnemonic, passphrase string) string {
 	// Convert mnemonic to seed
 	seed := bip39.NewSeed(mnemonic, passphrase)
@@ -174,4 +173,3 @@ func deriveBtc(mnemonic, passphrase string) string {
 	// Encode the address in Bech32 format
 	return address.EncodeAddress()
 }
-*/
