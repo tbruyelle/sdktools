@@ -66,6 +66,7 @@ type result struct {
 	addr     string
 	mnemonic string
 	path     string
+	index    uint32
 }
 
 func main() {
@@ -124,6 +125,10 @@ func run() error {
 	fmt.Printf("\nFOUND %s after %d tries in %s\n", res.addr, tries.Load(), time.Since(start).Round(time.Second))
 	fmt.Println("mnemonic:", res.mnemonic)
 	fmt.Println("hd path: ", res.path)
+	// The mnemonic alone lands on index 0, which is not the vanity address.
+	fmt.Printf("\nThe address sits at index %d, not the default 0, so recover with:\n", res.index)
+	fmt.Printf("  gnokey add <name> -recover -index %d\n", res.index)
+	fmt.Printf("  <chain>d keys add <name> --recover --index %d\n", res.index)
 	return nil
 }
 
@@ -180,10 +185,12 @@ func search(ctx context.Context, t *target, tries *atomic.Uint64, found func(res
 				rip.Write(sum[:]) //nolint:errcheck // never errors
 				addr = rip.Sum(addr[:0])
 				if t.matches(addr) {
+					index := base + uint32(j)
 					found(result{
 						addr:     t.bech32(addr),
 						mnemonic: mnemonic,
-						path:     t.path(base + uint32(j)),
+						path:     t.path(index),
+						index:    index,
 					})
 					return nil
 				}
